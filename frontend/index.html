@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fitness & Diet Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #4fffb0;
+    --accent2: #7c6fff;
+    --accent3: #ff6f6f;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --danger: #ff4d4d;
+    --success: #4fffb0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; }
+
+  /* LAYOUT */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 220px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 0;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .sidebar-logo {
+    font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px;
+    padding: 0 20px 28px;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .sidebar-logo span { color: var(--text); }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer;
+    font-size: 13px; color: var(--muted);
+    transition: all 0.15s; border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: var(--surface2); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* MAIN */
+  .main { flex: 1; padding: 36px 40px; overflow-y: auto; }
+  .page-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .page-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; }
+  .page-title span { color: var(--accent); }
+
+  /* BUTTON */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px; border: none;
+    cursor: pointer; font-family: 'DM Mono', monospace; font-size: 12px;
+    font-weight: 500; transition: all 0.15s; letter-spacing: 0.3px;
+  }
+  .btn-primary { background: var(--accent); color: #0d0f14; }
+  .btn-primary:hover { background: #3de89e; }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-edit { background: transparent; color: var(--accent2); border: 1px solid var(--accent2); }
+  .btn-edit:hover { background: var(--accent2); color: #fff; }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text); }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--surface2); }
+  th {
+    padding: 12px 16px; text-align: left; font-size: 11px;
+    font-weight: 500; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 11px 16px; font-size: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(79,255,176,0.03); }
+  .actions { display: flex; gap: 6px; }
+
+  /* BADGE */
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 11px;
+  }
+  .badge-green { background: rgba(79,255,176,0.12); color: var(--accent); }
+  .badge-purple { background: rgba(124,111,255,0.12); color: var(--accent2); }
+  .badge-red { background: rgba(255,111,111,0.12); color: var(--accent3); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px; width: 480px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px;
+    margin-bottom: 20px; color: var(--accent);
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid .full { grid-column: 1/-1; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  input, select, textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 12px; color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 12px; outline: none;
+    transition: border-color 0.15s; width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+  select option { background: var(--surface2); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 200;
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 12px 20px; border-radius: 8px; font-size: 13px;
+    animation: slideIn 0.2s ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast-success { border-color: var(--accent); color: var(--accent); }
+  .toast-error { border-color: var(--danger); color: var(--danger); }
+  @keyframes slideIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  .empty { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+  .loading { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback } = React;
+
+const API = "http://localhost:5000/api";
+
+// ── API HELPER ────────────────────────────────────────────────────────────────
+async function apiFetch(path, method = "GET", body = null) {
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+function Toast({ msg, type, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, []);
+  return (
+    <div className={`toast toast-${type}`}>
+      {type === "success" ? "✓" : "✗"} {msg}
+    </div>
+  );
+}
+
+// ── CONFIRM DIALOG ────────────────────────────────────────────────────────────
+function Confirm({ msg, onOk, onCancel }) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="modal" style={{width:340}} onClick={e => e.stopPropagation()}>
+        <div className="modal-title">Confirm Delete</div>
+        <p style={{fontSize:13, color:"var(--muted)", marginBottom:6}}>{msg}</p>
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="btn btn-danger" onClick={onOk}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// USERS PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function UsersPage({ toast }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null); // null | 'add' | row(for edit)
+  const [confirm, setConfirm] = useState(null);
+  const [form, setForm] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setRows(await apiFetch("/users")); }
+    catch(e) { toast("Failed to load users", "error"); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ email:"", password_hash:"", user_type:"regular", created_at: new Date().toISOString().slice(0,10) }); setModal("add"); };
+  const openEdit = (row) => { setForm({...row}); setModal(row); };
+
+  const save = async () => {
+    try {
+      if (modal === "add") {
+        await apiFetch("/users", "POST", form);
+        toast("User created", "success");
+      } else {
+        await apiFetch(`/users/${modal.user_id}`, "PUT", form);
+        toast("User updated", "success");
+      }
+      setModal(null); load();
+    } catch(e) { toast("Error saving user", "error"); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/users/${id}`, "DELETE"); toast("User deleted", "success"); load(); }
+    catch(e) { toast("Error deleting user", "error"); }
+    setConfirm(null);
+  };
+
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  return (
+    <>
+      <div className="page-header">
+        <div className="page-title">Users <span>//</span></div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add User</button>
+      </div>
+      <div className="table-wrap">
+        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? <div className="empty">No users found.</div> : (
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Email</th><th>Type</th><th>Created</th><th>Actions</th>
+            </tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.user_id}>
+                <td style={{color:"var(--muted)"}}>{r.user_id}</td>
+                <td>{r.email}</td>
+                <td><span className={`badge ${r.user_type === "admin" ? "badge-purple" : "badge-green"}`}>{r.user_type}</span></td>
+                <td style={{color:"var(--muted)"}}>{r.created_at?.slice(0,10)}</td>
+                <td><div className="actions">
+                  <button className="btn btn-edit btn-sm" onClick={() => openEdit(r)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirm(r)}>Delete</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{modal === "add" ? "Add User" : "Edit User"}</div>
+            <div className="form-grid">
+              <div className="field full">
+                <label>Email</label>
+                <input value={form.email||""} onChange={e=>f("email",e.target.value)} placeholder="user@example.com"/>
+              </div>
+              <div className="field full">
+                <label>Password Hash</label>
+                <input value={form.password_hash||""} onChange={e=>f("password_hash",e.target.value)} placeholder="hashed password"/>
+              </div>
+              <div className="field">
+                <label>User Type</label>
+                <select value={form.user_type||"regular"} onChange={e=>f("user_type",e.target.value)}>
+                  <option value="regular">regular</option>
+                  <option value="admin">admin</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Created At</label>
+                <input type="date" value={form.created_at||""} onChange={e=>f("created_at",e.target.value)}/>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && <Confirm msg={`Delete user "${confirm.email}"?`} onOk={() => del(confirm.user_id)} onCancel={() => setConfirm(null)}/>}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MEALS PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function MealsPage({ toast }) {
+  const [rows, setRows] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [form, setForm] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [m, u] = await Promise.all([apiFetch("/meals"), apiFetch("/users")]);
+      setRows(m); setUsers(u);
+    } catch(e) { toast("Failed to load meals", "error"); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ user_id: users[0]?.user_id||"", meal_datetime:"", meal_name:"", total_calories:0 }); setModal("add"); };
+  const openEdit = (r) => { setForm({...r, meal_datetime: r.meal_datetime?.replace(" ","T").slice(0,16) }); setModal(r); };
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  const save = async () => {
+    try {
+      const payload = {...form, meal_datetime: form.meal_datetime?.replace("T"," ")};
+      if (modal === "add") { await apiFetch("/meals", "POST", payload); toast("Meal created", "success"); }
+      else { await apiFetch(`/meals/${modal.meal_id}`, "PUT", payload); toast("Meal updated", "success"); }
+      setModal(null); load();
+    } catch(e) { toast("Error saving meal", "error"); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/meals/${id}`, "DELETE"); toast("Meal deleted", "success"); load(); }
+    catch(e) { toast("Error deleting meal", "error"); }
+    setConfirm(null);
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <div className="page-title">Meals <span>//</span></div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Meal</button>
+      </div>
+      <div className="table-wrap">
+        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? <div className="empty">No meals found.</div> : (
+          <table>
+            <thead><tr><th>ID</th><th>User</th><th>Name</th><th>Date/Time</th><th>Calories</th><th>Actions</th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.meal_id}>
+                <td style={{color:"var(--muted)"}}>{r.meal_id}</td>
+                <td style={{color:"var(--accent2)"}}>{r.email}</td>
+                <td>{r.meal_name}</td>
+                <td style={{color:"var(--muted)"}}>{r.meal_datetime?.slice(0,16)}</td>
+                <td><span className="badge badge-green">{r.total_calories} kcal</span></td>
+                <td><div className="actions">
+                  <button className="btn btn-edit btn-sm" onClick={() => openEdit(r)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirm(r)}>Delete</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{modal === "add" ? "Add Meal" : "Edit Meal"}</div>
+            <div className="form-grid">
+              {modal === "add" && (
+                <div className="field full">
+                  <label>User</label>
+                  <select value={form.user_id||""} onChange={e=>f("user_id",e.target.value)}>
+                    {users.map(u => <option key={u.user_id} value={u.user_id}>{u.email}</option>)}
+                  </select>
+                </div>
+              )}
+              <div className="field full">
+                <label>Meal Name</label>
+                <input value={form.meal_name||""} onChange={e=>f("meal_name",e.target.value)} placeholder="Breakfast, Lunch..."/>
+              </div>
+              <div className="field">
+                <label>Date & Time</label>
+                <input type="datetime-local" value={form.meal_datetime||""} onChange={e=>f("meal_datetime",e.target.value)}/>
+              </div>
+              <div className="field">
+                <label>Total Calories</label>
+                <input type="number" value={form.total_calories||""} onChange={e=>f("total_calories",e.target.value)} min="0"/>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && <Confirm msg={`Delete meal "${confirm.meal_name}"?`} onOk={() => del(confirm.meal_id)} onCancel={() => setConfirm(null)}/>}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FOODS PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function FoodsPage({ toast }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [form, setForm] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setRows(await apiFetch("/foods")); }
+    catch(e) { toast("Failed to load foods", "error"); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ food_name:"", calories_per_serving:0, protein_g:0, carbs_g:0, fat_g:0, fiber_g:0 }); setModal("add"); };
+  const openEdit = (r) => { setForm({...r}); setModal(r); };
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  const save = async () => {
+    try {
+      if (modal === "add") { await apiFetch("/foods", "POST", form); toast("Food created", "success"); }
+      else { await apiFetch(`/foods/${modal.food_id}`, "PUT", form); toast("Food updated", "success"); }
+      setModal(null); load();
+    } catch(e) { toast("Error saving food", "error"); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/foods/${id}`, "DELETE"); toast("Food deleted", "success"); load(); }
+    catch(e) { toast("Error deleting food", "error"); }
+    setConfirm(null);
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <div className="page-title">Foods <span>//</span></div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Food</button>
+      </div>
+      <div className="table-wrap">
+        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? <div className="empty">No foods found.</div> : (
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Calories</th><th>Protein</th><th>Carbs</th><th>Fat</th><th>Fiber</th><th>Actions</th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.food_id}>
+                <td style={{color:"var(--muted)"}}>{r.food_id}</td>
+                <td>{r.food_name}</td>
+                <td><span className="badge badge-red">{r.calories_per_serving}</span></td>
+                <td>{r.protein_g}g</td>
+                <td>{r.carbs_g}g</td>
+                <td>{r.fat_g}g</td>
+                <td>{r.fiber_g ?? "—"}g</td>
+                <td><div className="actions">
+                  <button className="btn btn-edit btn-sm" onClick={() => openEdit(r)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirm(r)}>Delete</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{modal === "add" ? "Add Food" : "Edit Food"}</div>
+            <div className="form-grid">
+              <div className="field full">
+                <label>Food Name</label>
+                <input value={form.food_name||""} onChange={e=>f("food_name",e.target.value)} placeholder="Chicken Breast"/>
+              </div>
+              <div className="field">
+                <label>Calories / Serving</label>
+                <input type="number" value={form.calories_per_serving||""} onChange={e=>f("calories_per_serving",e.target.value)} min="0"/>
+              </div>
+              <div className="field">
+                <label>Protein (g)</label>
+                <input type="number" value={form.protein_g||""} onChange={e=>f("protein_g",e.target.value)} min="0"/>
+              </div>
+              <div className="field">
+                <label>Carbs (g)</label>
+                <input type="number" value={form.carbs_g||""} onChange={e=>f("carbs_g",e.target.value)} min="0"/>
+              </div>
+              <div className="field">
+                <label>Fat (g)</label>
+                <input type="number" value={form.fat_g||""} onChange={e=>f("fat_g",e.target.value)} min="0"/>
+              </div>
+              <div className="field">
+                <label>Fiber (g)</label>
+                <input type="number" value={form.fiber_g||""} onChange={e=>f("fiber_g",e.target.value)} min="0"/>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && <Confirm msg={`Delete food "${confirm.food_name}"?`} onOk={() => del(confirm.food_id)} onCancel={() => setConfirm(null)}/>}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// WORKOUTS PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function WorkoutsPage({ toast }) {
+  const [rows, setRows] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [form, setForm] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [w, u] = await Promise.all([apiFetch("/workouts"), apiFetch("/users")]);
+      setRows(w); setUsers(u);
+    } catch(e) { toast("Failed to load workouts", "error"); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ user_id: users[0]?.user_id||"", workout_datetime:"", duration_min:"", total_calories_burned:"" }); setModal("add"); };
+  const openEdit = (r) => { setForm({...r, workout_datetime: r.workout_datetime?.replace(" ","T").slice(0,16)}); setModal(r); };
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  const save = async () => {
+    try {
+      const payload = {...form, workout_datetime: form.workout_datetime?.replace("T"," ")};
+      if (modal === "add") { await apiFetch("/workouts", "POST", payload); toast("Workout created", "success"); }
+      else { await apiFetch(`/workouts/${modal.workout_id}`, "PUT", payload); toast("Workout updated", "success"); }
+      setModal(null); load();
+    } catch(e) { toast("Error saving workout", "error"); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/workouts/${id}`, "DELETE"); toast("Workout deleted", "success"); load(); }
+    catch(e) { toast("Error deleting workout", "error"); }
+    setConfirm(null);
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <div className="page-title">Workouts <span>//</span></div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Workout</button>
+      </div>
+      <div className="table-wrap">
+        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? <div className="empty">No workouts found.</div> : (
+          <table>
+            <thead><tr><th>ID</th><th>User</th><th>Date/Time</th><th>Duration</th><th>Cal Burned</th><th>Actions</th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.workout_id}>
+                <td style={{color:"var(--muted)"}}>{r.workout_id}</td>
+                <td style={{color:"var(--accent2)"}}>{r.email}</td>
+                <td style={{color:"var(--muted)"}}>{r.workout_datetime?.slice(0,16)}</td>
+                <td><span className="badge badge-purple">{r.duration_min} min</span></td>
+                <td>{r.total_calories_burned ?? "—"} kcal</td>
+                <td><div className="actions">
+                  <button className="btn btn-edit btn-sm" onClick={() => openEdit(r)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirm(r)}>Delete</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{modal === "add" ? "Add Workout" : "Edit Workout"}</div>
+            <div className="form-grid">
+              {modal === "add" && (
+                <div className="field full">
+                  <label>User</label>
+                  <select value={form.user_id||""} onChange={e=>f("user_id",e.target.value)}>
+                    {users.map(u => <option key={u.user_id} value={u.user_id}>{u.email}</option>)}
+                  </select>
+                </div>
+              )}
+              <div className="field full">
+                <label>Date & Time</label>
+                <input type="datetime-local" value={form.workout_datetime||""} onChange={e=>f("workout_datetime",e.target.value)}/>
+              </div>
+              <div className="field">
+                <label>Duration (min)</label>
+                <input type="number" value={form.duration_min||""} onChange={e=>f("duration_min",e.target.value)} min="1"/>
+              </div>
+              <div className="field">
+                <label>Calories Burned</label>
+                <input type="number" value={form.total_calories_burned||""} onChange={e=>f("total_calories_burned",e.target.value)} min="0"/>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && <Confirm msg={`Delete this workout?`} onOk={() => del(confirm.workout_id)} onCancel={() => setConfirm(null)}/>}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// EXERCISES PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function ExercisesPage({ toast }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [form, setForm] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setRows(await apiFetch("/exercises")); }
+    catch(e) { toast("Failed to load exercises", "error"); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ exercise_name:"", muscle_group:"", calories_per_unit:"" }); setModal("add"); };
+  const openEdit = (r) => { setForm({...r}); setModal(r); };
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  const save = async () => {
+    try {
+      if (modal === "add") { await apiFetch("/exercises", "POST", form); toast("Exercise created", "success"); }
+      else { await apiFetch(`/exercises/${modal.exercise_id}`, "PUT", form); toast("Exercise updated", "success"); }
+      setModal(null); load();
+    } catch(e) { toast("Error saving exercise", "error"); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/exercises/${id}`, "DELETE"); toast("Exercise deleted", "success"); load(); }
+    catch(e) { toast("Error deleting exercise", "error"); }
+    setConfirm(null);
+  };
+
+  const muscleGroups = ["Chest","Back","Legs","Shoulders","Arms","Core","Cardio","Full Body"];
+
+  return (
+    <>
+      <div className="page-header">
+        <div className="page-title">Exercises <span>//</span></div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Exercise</button>
+      </div>
+      <div className="table-wrap">
+        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? <div className="empty">No exercises found.</div> : (
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Muscle Group</th><th>Cal / Unit</th><th>Actions</th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.exercise_id}>
+                <td style={{color:"var(--muted)"}}>{r.exercise_id}</td>
+                <td>{r.exercise_name}</td>
+                <td><span className="badge badge-purple">{r.muscle_group}</span></td>
+                <td>{r.calories_per_unit ?? "—"}</td>
+                <td><div className="actions">
+                  <button className="btn btn-edit btn-sm" onClick={() => openEdit(r)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirm(r)}>Delete</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{modal === "add" ? "Add Exercise" : "Edit Exercise"}</div>
+            <div className="form-grid">
+              <div className="field full">
+                <label>Exercise Name</label>
+                <input value={form.exercise_name||""} onChange={e=>f("exercise_name",e.target.value)} placeholder="Push-up"/>
+              </div>
+              <div className="field">
+                <label>Muscle Group</label>
+                <select value={form.muscle_group||""} onChange={e=>f("muscle_group",e.target.value)}>
+                  <option value="">Select...</option>
+                  {muscleGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label>Calories / Unit</label>
+                <input type="number" value={form.calories_per_unit||""} onChange={e=>f("calories_per_unit",e.target.value)} min="0" step="0.1"/>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && <Confirm msg={`Delete exercise "${confirm.exercise_name}"?`} onOk={() => del(confirm.exercise_id)} onCancel={() => setConfirm(null)}/>}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROGRESS PAGE
+// ══════════════════════════════════════════════════════════════════════════════
+function ProgressPage({ toast }) {
+  const [rows, setRows] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [form, setForm] = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [p, u] = await Promise.all([apiFetch("/progress"), apiFetch("/users")]);
+      setRows(p); setUsers(u);
+    } catch(e) { toast("Failed to load progress", "error"); }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ user_id: users[0]?.user_id||"", progress_date:"", body_weight:"", body_fat_percent:"", notes:"" }); setModal("add"); };
+  const openEdit = (r) => { setForm({...r}); setModal(r); };
+  const f = (k, v) => setForm(p => ({...p, [k]: v}));
+
+  const save = async () => {
+    try {
+      if (modal === "add") { await apiFetch("/progress", "POST", form); toast("Progress created", "success"); }
+      else { await apiFetch(`/progress/${modal.progress_id}`, "PUT", form); toast("Progress updated", "success"); }
+      setModal(null); load();
+    } catch(e) { toast("Error saving progress", "error"); }
+  };
+
+  const del = async (id) => {
+    try { await apiFetch(`/progress/${id}`, "DELETE"); toast("Progress deleted", "success"); load(); }
+    catch(e) { toast("Error deleting progress", "error"); }
+    setConfirm(null);
+  };
+
+  return (
+    <>
+      <div className="page-header">
+        <div className="page-title">Progress <span>//</span></div>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Entry</button>
+      </div>
+      <div className="table-wrap">
+        {loading ? <div className="loading">Loading...</div> : rows.length === 0 ? <div className="empty">No progress entries found.</div> : (
+          <table>
+            <thead><tr><th>ID</th><th>User</th><th>Date</th><th>Weight (lbs)</th><th>Body Fat %</th><th>Notes</th><th>Actions</th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.progress_id}>
+                <td style={{color:"var(--muted)"}}>{r.progress_id}</td>
+                <td style={{color:"var(--accent2)"}}>{r.email}</td>
+                <td style={{color:"var(--muted)"}}>{r.progress_date?.slice(0,10)}</td>
+                <td><span className="badge badge-green">{r.body_weight ?? "—"}</span></td>
+                <td>{r.body_fat_percent != null ? `${r.body_fat_percent}%` : "—"}</td>
+                <td style={{color:"var(--muted)", maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{r.notes || "—"}</td>
+                <td><div className="actions">
+                  <button className="btn btn-edit btn-sm" onClick={() => openEdit(r)}>Edit</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => setConfirm(r)}>Delete</button>
+                </div></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <div className="modal-overlay" onClick={() => setModal(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-title">{modal === "add" ? "Add Progress Entry" : "Edit Progress Entry"}</div>
+            <div className="form-grid">
+              {modal === "add" && (
+                <div className="field full">
+                  <label>User</label>
+                  <select value={form.user_id||""} onChange={e=>f("user_id",e.target.value)}>
+                    {users.map(u => <option key={u.user_id} value={u.user_id}>{u.email}</option>)}
+                  </select>
+                </div>
+              )}
+              <div className="field full">
+                <label>Date</label>
+                <input type="date" value={form.progress_date||""} onChange={e=>f("progress_date",e.target.value)}/>
+              </div>
+              <div className="field">
+                <label>Body Weight (lbs)</label>
+                <input type="number" value={form.body_weight||""} onChange={e=>f("body_weight",e.target.value)} min="0" step="0.1"/>
+              </div>
+              <div className="field">
+                <label>Body Fat %</label>
+                <input type="number" value={form.body_fat_percent||""} onChange={e=>f("body_fat_percent",e.target.value)} min="0" max="100" step="0.1"/>
+              </div>
+              <div className="field full">
+                <label>Notes</label>
+                <textarea value={form.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="Any notes..."/>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={save}>Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirm && <Confirm msg={`Delete this progress entry?`} onOk={() => del(confirm.progress_id)} onCancel={() => setConfirm(null)}/>}
+    </>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// APP SHELL
+// ══════════════════════════════════════════════════════════════════════════════
+const NAV = [
+  { id: "users",     icon: "👤", label: "Users"     },
+  { id: "meals",     icon: "🍽️", label: "Meals"     },
+  { id: "foods",     icon: "🥦", label: "Foods"     },
+  { id: "workouts",  icon: "💪", label: "Workouts"  },
+  { id: "exercises", icon: "🏃", label: "Exercises" },
+  { id: "progress",  icon: "📈", label: "Progress"  },
+];
+
+function App() {
+  const [page, setPage] = useState("users");
+  const [toastMsg, setToastMsg] = useState(null);
+
+  const toast = (msg, type = "success") => setToastMsg({ msg, type });
+
+  const Page = { users: UsersPage, meals: MealsPage, foods: FoodsPage, workouts: WorkoutsPage, exercises: ExercisesPage, progress: ProgressPage }[page];
+
+  return (
+    <div className="app">
+      <nav className="sidebar">
+        <div className="sidebar-logo">FIT<span>TRACK</span></div>
+        {NAV.map(n => (
+          <div key={n.id} className={`nav-item ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+            <span className="nav-icon">{n.icon}</span> {n.label}
+          </div>
+        ))}
+      </nav>
+      <main className="main">
+        <Page toast={toast} />
+      </main>
+      {toastMsg && <Toast msg={toastMsg.msg} type={toastMsg.type} onClose={() => setToastMsg(null)}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
