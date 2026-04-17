@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitTrack — Auth</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0d0f14; --surface: #151820; --surface2: #1c2030; --border: #252a3a;
+    --accent: #4fffb0; --accent2: #7c6fff; --text: #e8eaf0; --muted: #6b7280; --danger: #ff4d4d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(79,255,176,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,255,176,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
+  .blob { position:fixed; border-radius:50%; filter:blur(80px); opacity:0.12; pointer-events:none; z-index:0; animation:drift 10s ease-in-out infinite alternate; }
+  .blob-1 { width:400px; height:400px; background:var(--accent); top:-80px; left:-80px; }
+  .blob-2 { width:300px; height:300px; background:var(--accent2); bottom:-60px; right:-60px; animation-delay:-4s; }
+  @keyframes drift { from{transform:translate(0,0) scale(1)} to{transform:translate(30px,20px) scale(1.05)} }
+  .card { position:relative; z-index:1; background:var(--surface); border:1px solid var(--border); border-radius:16px; width:420px; max-width:95vw; padding:36px; animation:fadeUp 0.35s ease both; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:var(--accent); letter-spacing:-0.5px; margin-bottom:28px; display:flex; align-items:center; gap:8px; }
+  .logo span { color:var(--text); }
+  .logo-dot { width:7px; height:7px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .tabs { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:3px; margin-bottom:28px; gap:3px; }
+  .tab { flex:1; padding:8px; text-align:center; font-size:12px; font-family:'DM Mono',monospace; letter-spacing:0.5px; border-radius:6px; border:none; cursor:pointer; transition:all 0.2s; color:var(--muted); background:transparent; }
+  .tab.active { background:var(--accent); color:#0d0f14; font-weight:500; }
+  .tab:not(.active):hover { color:var(--text); }
+  .form-title { font-family:'Syne',sans-serif; font-weight:700; font-size:20px; margin-bottom:6px; }
+  .form-subtitle { font-size:11px; color:var(--muted); margin-bottom:22px; letter-spacing:0.3px; }
+  .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  label { font-size:10px; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; }
+  .input-wrap { position:relative; }
+  .input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:13px; pointer-events:none; opacity:0.5; }
+  input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 12px 10px 36px; color:var(--text); font-family:'DM Mono',monospace; font-size:12px; outline:none; transition:border-color 0.15s,box-shadow 0.15s; }
+  input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,255,176,0.08); }
+  input::placeholder { color:var(--muted); opacity:0.6; }
+  .btn-submit { width:100%; padding:11px; margin-top:6px; background:var(--accent); color:#0d0f14; border:none; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; font-weight:500; letter-spacing:0.5px; cursor:pointer; transition:all 0.15s; }
+  .btn-submit:hover { background:#3de89e; }
+  .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
+  .error-msg { background:rgba(255,77,77,0.08); border:1px solid rgba(255,77,77,0.3); color:var(--danger); border-radius:6px; padding:9px 12px; font-size:11px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .card-footer { margin-top:20px; text-align:center; font-size:11px; color:var(--muted); }
+  .card-footer a { color:var(--accent); cursor:pointer; }
+  .spinner { width:14px; height:14px; border:2px solid rgba(13,15,20,0.3); border-top-color:#0d0f14; border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .pw-strength { margin-top:5px; height:3px; border-radius:2px; background:var(--border); overflow:hidden; }
+  .pw-strength-fill { height:100%; border-radius:2px; transition:width 0.3s,background 0.3s; }
+  /* dashboard */
+  .dashboard { position:relative; z-index:1; display:flex; min-height:100vh; width:100vw; animation:fadeUp 0.3s ease both; }
+  .sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:24px 0; position:sticky; top:0; height:100vh; }
+  .sidebar-logo { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; padding:0 20px 28px; color:var(--accent); letter-spacing:-0.5px; border-bottom:1px solid var(--border); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .sidebar-logo span { color:var(--text); }
+  .sidebar-user { padding:16px 20px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--border); margin-bottom:12px; }
+  .sidebar-user strong { display:block; color:var(--text); font-size:12px; margin-bottom:2px; }
+  .sidebar-badge { display:inline-block; padding:1px 7px; border-radius:100px; font-size:10px; margin-top:4px; }
+  .badge-green { background:rgba(79,255,176,0.12); color:var(--accent); }
+  .badge-purple { background:rgba(124,111,255,0.12); color:var(--accent2); }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; cursor:pointer; font-size:13px; color:var(--muted); transition:all 0.15s; border-left:2px solid transparent; user-select:none; }
+  .nav-item:hover { color:var(--text); background:var(--surface2); }
+  .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--surface2); }
+  .nav-icon { font-size:16px; width:20px; text-align:center; }
+  .sidebar-logout { margin-top:auto; padding:16px 20px 0; border-top:1px solid var(--border); }
+  .btn-logout { width:100%; padding:8px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; transition:all 0.15s; }
+  .btn-logout:hover { border-color:var(--danger); color:var(--danger); }
+  .main-area { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--muted); }
+  .main-area .big-icon { font-size:48px; opacity:0.3; }
+  .main-area p { font-size:13px; }
+  .main-area span { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div id="root"></div>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+const API = "http://localhost:5000/api";
+
+async function apiFetch(path, method = "GET", body = null) {
+  const opts = { method, headers: { "Content-Type": "application/json" }, credentials: "include" };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Something went wrong");
+  return data;
+}
+
+function pwStrength(pw) {
+  if (!pw) return { pct: 0, color: "transparent", label: "" };
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const map = [
+    { pct: 20, color: "#ff4d4d", label: "weak" },
+    { pct: 45, color: "#ff9f43", label: "fair" },
+    { pct: 70, color: "#ffd32a", label: "good" },
+    { pct: 100, color: "#4fffb0", label: "strong" },
+  ];
+  return map[score - 1] || { pct: 10, color: "#ff4d4d", label: "weak" };
+}
+
+function AuthCard({ onLogin }) {
+  const [tab, setTab] = useState("login");
+  const [form, setForm] = useState({ email: "", password: "", confirm: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const emailRef = useRef();
+
+  useEffect(() => { emailRef.current?.focus(); }, [tab]);
+
+  const f = (k) => (e) => { setForm(p => ({...p, [k]: e.target.value})); setError(""); };
+
+  const submit = async () => {
+    setError("");
+    const { email, password, confirm } = form;
+    if (!email || !password) return setError("Please fill in all fields.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Enter a valid email address.");
+    if (password.length < 6) return setError("Password must be at least 6 characters.");
+    if (tab === "signup" && password !== confirm) return setError("Passwords do not match.");
+
+    setLoading(true);
+    try {
+      const user = await apiFetch(tab === "login" ? "/auth/login" : "/auth/register", "POST", { email, password });
+      onLogin(user);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const strength = pwStrength(form.password);
+
+  return (
+    <div className="card">
+      <div className="logo"><div className="logo-dot"></div>FIT<span>TRACK</span></div>
+      <div className="tabs">
+        <button className={`tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setError(""); }}>Login</button>
+        <button className={`tab ${tab === "signup" ? "active" : ""}`} onClick={() => { setTab("signup"); setError(""); }}>Sign Up</button>
+      </div>
+      <div className="form-title">{tab === "login" ? "Welcome back" : "Create account"}</div>
+      <div className="form-subtitle">{tab === "login" ? "Sign in to access your dashboard" : "Start tracking your fitness journey"}</div>
+      {error && <div className="error-msg"><span>✗</span> {error}</div>}
+      <div className="field">
+        <label>Email</label>
+        <div className="input-wrap">
+          <span className="input-icon">✉</span>
+          <input ref={emailRef} type="email" placeholder="you@example.com" value={form.email} onChange={f("email")} onKeyDown={e => e.key === "Enter" && submit()} />
+        </div>
+      </div>
+      <div className="field">
+        <label>Password</label>
+        <div className="input-wrap">
+          <span className="input-icon">🔑</span>
+          <input type="password" placeholder={tab === "signup" ? "Min. 6 characters" : "••••••••"} value={form.password} onChange={f("password")} onKeyDown={e => e.key === "Enter" && submit()} />
+        </div>
+        {tab === "signup" && form.password && (
+          <div>
+            <div className="pw-strength"><div className="pw-strength-fill" style={{ width: `${strength.pct}%`, background: strength.color }}></div></div>
+            <div style={{ fontSize: 10, color: strength.color, marginTop: 3 }}>{strength.label}</div>
+          </div>
+        )}
+      </div>
+      {tab === "signup" && (
+        <div className="field">
+          <label>Confirm Password</label>
+          <div className="input-wrap">
+            <span className="input-icon">🔒</span>
+            <input type="password" placeholder="Re-enter password" value={form.confirm} onChange={f("confirm")} onKeyDown={e => e.key === "Enter" && submit()} />
+          </div>
+        </div>
+      )}
+      <button className="btn-submit" onClick={submit} disabled={loading}>
+        {loading ? <><span className="spinner"></span>Please wait...</> : (tab === "login" ? "Sign In" : "Create Account")}
+      </button>
+      <div className="card-footer">
+        {tab === "login"
+          ? <>Don't have an account? <a onClick={() => { setTab("signup"); setError(""); }}>Sign up</a></>
+          : <>Already have an account? <a onClick={() => { setTab("login"); setError(""); }}>Sign in</a></>}
+      </div>
+    </div>
+  );
+}
+
+const NAV = [
+  { id:"users", icon:"👤", label:"Users" }, { id:"meals", icon:"🍽️", label:"Meals" },
+  { id:"foods", icon:"🥦", label:"Foods" }, { id:"workouts", icon:"💪", label:"Workouts" },
+  { id:"exercises", icon:"🏃", label:"Exercises" }, { id:"progress", icon:"📈", label:"Progress" },
+];
+
+function Dashboard({ user, onLogout }) {
+  const [page, setPage] = useState("");
+  const logout = async () => { await apiFetch("/auth/logout", "POST"); onLogout(); };
+  return (
+    <div className="dashboard">
+      <nav className="sidebar">
+        <div className="sidebar-logo"><div className="logo-dot"></div>FIT<span>TRACK</span></div>
+        <div className="sidebar-user">
+          <strong>{user.email}</strong>
+          <span className={`sidebar-badge ${user.user_type === "admin" ? "badge-purple" : "badge-green"}`}>{user.user_type}</span>
+        </div>
+        {NAV.map(n => (
+          <div key={n.id} className={`nav-item ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+            <span className="nav-icon">{n.icon}</span> {n.label}
+          </div>
+        ))}
+        <div className="sidebar-logout">
+          <button className="btn-logout" onClick={logout}>↩ Sign Out</button>
+        </div>
+      </nav>
+      <div className="main-area">
+        <div className="big-icon">🏋️</div>
+        <p style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:700, color:"var(--text)" }}>
+          Welcome, <span>{user.email.split("@")[0]}</span>
+        </p>
+        <p>Your dashboard is ready.</p>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [checking, setChecking] = useState(true);
+
+  // Resume existing session on page load
+  useEffect(() => {
+    apiFetch("/auth/me")
+      .then(u => setUser(u))
+      .catch(() => {})
+      .finally(() => setChecking(false));
+  }, []);
+
+  if (checking) return null;
+  return user
+    ? <Dashboard user={user} onLogout={() => setUser(null)} />
+    : <AuthCard onLogin={setUser} />;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

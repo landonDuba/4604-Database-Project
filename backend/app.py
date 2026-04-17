@@ -1,13 +1,14 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 import mysql.connector
-import os
+import bcrypt
 
 app = Flask(__name__)
-CORS(app)
+app.secret_key = "change-this-to-a-random-secret"  # TODO: use os.urandom(24) in production
+
+CORS(app, supports_credentials=True, origins=["null", "http://localhost", "http://127.0.0.1:5500"])
 
 # ── DB CONFIG ─────────────────────────────────────────────────────────────────
-# Change these to match your MySQL credentials
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",
@@ -32,53 +33,119 @@ def query(sql, params=(), fetchone=False, commit=False):
     return result
 
 
+# ── AUTH HELPERS ──────────────────────────────────────────────────────────────
+def login_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "user_id" not in session:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── AUTH ROUTES ───────────────────────────────────────────────────────────────
+@app.route("/api/auth/register", methods=["POST"])
+def register():
+    d = request.json
+    email = d.get("email", "").strip().lower()
+    password = d.get("password", "")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    existing = query("SELECT user_id FROM USER WHERE email=%s", (email,), fetchone=True)
+    if existing:
+        return jsonify({"error": "An account with that email already exists"}), 409
+
+    pw_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    from datetime import date
+    user_id = query(
+        "INSERT INTO USER (email, password_hash, user_type, created_at) VALUES (%s,%s,%s,%s)",
+        (email, pw_hash, "regular", date.today().isoformat()), commit=True
+    )
+
+    session["user_id"] = user_id
+    session["email"] = email
+    session["user_type"] = "regular"
+    return jsonify({"user_id": user_id, "email": email, "user_type": "regular"}), 201
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def login():
+    d = request.json
+    email = d.get("email", "").strip().lower()
+    password = d.get("password", "")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    user = query("SELECT * FROM USER WHERE email=%s", (email,), fetchone=True)
+    if not user or not bcrypt.checkpw(password.encode(), user["password_hash"].encode()):
+        return jsonify({"error": "Invalid email or password"}), 401
+
+    session["user_id"] = user["user_id"]
+    session["email"] = user["email"]
+    session["user_type"] = user["user_type"]
+    return jsonify({"user_id": user["user_id"], "email": user["email"], "user_type": user["user_type"]})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"success": True})
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def me():
+    if "user_id" not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    return jsonify({"user_id": session["user_id"], "email": session["email"], "user_type": session["user_type"]})
+
+
 # ── USERS ─────────────────────────────────────────────────────────────────────
 @app.route("/api/users", methods=["GET"])
+@login_required
 def get_users():
     return jsonify(query("SELECT * FROM USER ORDER BY user_id"))
 
 @app.route("/api/users", methods=["POST"])
+@login_required
 def create_user():
     d = request.json
     last_id = query(
         "INSERT INTO USER (email, password_hash, user_type, created_at) VALUES (%s,%s,%s,%s)",
-        (d["email"], d["password_hash"], d["user_type"], d["created_at"]),
-        commit=True
+        (d["email"], d["password_hash"], d["user_type"], d["created_at"]), commit=True
     )
     return jsonify({"user_id": last_id}), 201
 
 @app.route("/api/users/<int:uid>", methods=["PUT"])
+@login_required
 def update_user(uid):
     d = request.json
-    query(
-        "UPDATE USER SET email=%s, password_hash=%s, user_type=%s WHERE user_id=%s",
-        (d["email"], d["password_hash"], d["user_type"], uid),
-        commit=True
-    )
+    query("UPDATE USER SET email=%s, password_hash=%s, user_type=%s WHERE user_id=%s",
+          (d["email"], d["password_hash"], d["user_type"], uid), commit=True)
     return jsonify({"success": True})
 
 @app.route("/api/users/<int:uid>", methods=["DELETE"])
+@login_required
 def delete_user(uid):
-    try:
-        # First, delete all meals for this user to avoid foreign key errors
-        query("DELETE FROM MEAL WHERE user_id=%s", (uid,), commit=True)
-        
-        # Now delete the user
-        query("DELETE FROM USER WHERE user_id=%s", (uid,), commit=True)
-        return jsonify({"success": True})
-    except mysql.connector.IntegrityError as e:
-        # If some other FK error occurs
-        return jsonify({"success": False, "error": str(e)}), 400
+    query("DELETE FROM USER WHERE user_id=%s", (uid,), commit=True)
+    return jsonify({"success": True})
 
 
 # ── MEALS ─────────────────────────────────────────────────────────────────────
 @app.route("/api/meals", methods=["GET"])
+@login_required
 def get_meals():
     return jsonify(query(
         "SELECT m.*, u.email FROM MEAL m JOIN USER u ON m.user_id=u.user_id ORDER BY m.meal_datetime DESC"
     ))
 
 @app.route("/api/meals", methods=["POST"])
+@login_required
 def create_meal():
     d = request.json
     last_id = query(
@@ -88,6 +155,7 @@ def create_meal():
     return jsonify({"meal_id": last_id}), 201
 
 @app.route("/api/meals/<int:mid>", methods=["PUT"])
+@login_required
 def update_meal(mid):
     d = request.json
     query("UPDATE MEAL SET meal_datetime=%s, meal_name=%s, total_calories=%s WHERE meal_id=%s",
@@ -95,6 +163,7 @@ def update_meal(mid):
     return jsonify({"success": True})
 
 @app.route("/api/meals/<int:mid>", methods=["DELETE"])
+@login_required
 def delete_meal(mid):
     query("DELETE FROM MEAL WHERE meal_id=%s", (mid,), commit=True)
     return jsonify({"success": True})
@@ -102,10 +171,12 @@ def delete_meal(mid):
 
 # ── FOOD ──────────────────────────────────────────────────────────────────────
 @app.route("/api/foods", methods=["GET"])
+@login_required
 def get_foods():
     return jsonify(query("SELECT * FROM FOOD ORDER BY food_name"))
 
 @app.route("/api/foods", methods=["POST"])
+@login_required
 def create_food():
     d = request.json
     last_id = query(
@@ -115,6 +186,7 @@ def create_food():
     return jsonify({"food_id": last_id}), 201
 
 @app.route("/api/foods/<int:fid>", methods=["PUT"])
+@login_required
 def update_food(fid):
     d = request.json
     query("UPDATE FOOD SET food_name=%s, calories_per_serving=%s, protein_g=%s, carbs_g=%s, fat_g=%s, fiber_g=%s WHERE food_id=%s",
@@ -122,6 +194,7 @@ def update_food(fid):
     return jsonify({"success": True})
 
 @app.route("/api/foods/<int:fid>", methods=["DELETE"])
+@login_required
 def delete_food(fid):
     query("DELETE FROM FOOD WHERE food_id=%s", (fid,), commit=True)
     return jsonify({"success": True})
@@ -129,12 +202,14 @@ def delete_food(fid):
 
 # ── WORKOUTS ──────────────────────────────────────────────────────────────────
 @app.route("/api/workouts", methods=["GET"])
+@login_required
 def get_workouts():
     return jsonify(query(
         "SELECT w.*, u.email FROM WORKOUT w JOIN USER u ON w.user_id=u.user_id ORDER BY w.workout_datetime DESC"
     ))
 
 @app.route("/api/workouts", methods=["POST"])
+@login_required
 def create_workout():
     d = request.json
     last_id = query(
@@ -144,6 +219,7 @@ def create_workout():
     return jsonify({"workout_id": last_id}), 201
 
 @app.route("/api/workouts/<int:wid>", methods=["PUT"])
+@login_required
 def update_workout(wid):
     d = request.json
     query("UPDATE WORKOUT SET workout_datetime=%s, duration_min=%s, total_calories_burned=%s WHERE workout_id=%s",
@@ -151,6 +227,7 @@ def update_workout(wid):
     return jsonify({"success": True})
 
 @app.route("/api/workouts/<int:wid>", methods=["DELETE"])
+@login_required
 def delete_workout(wid):
     query("DELETE FROM WORKOUT WHERE workout_id=%s", (wid,), commit=True)
     return jsonify({"success": True})
@@ -158,10 +235,12 @@ def delete_workout(wid):
 
 # ── EXERCISES ─────────────────────────────────────────────────────────────────
 @app.route("/api/exercises", methods=["GET"])
+@login_required
 def get_exercises():
     return jsonify(query("SELECT * FROM EXERCISE ORDER BY exercise_name"))
 
 @app.route("/api/exercises", methods=["POST"])
+@login_required
 def create_exercise():
     d = request.json
     last_id = query(
@@ -171,6 +250,7 @@ def create_exercise():
     return jsonify({"exercise_id": last_id}), 201
 
 @app.route("/api/exercises/<int:eid>", methods=["PUT"])
+@login_required
 def update_exercise(eid):
     d = request.json
     query("UPDATE EXERCISE SET exercise_name=%s, muscle_group=%s, calories_per_unit=%s WHERE exercise_id=%s",
@@ -178,6 +258,7 @@ def update_exercise(eid):
     return jsonify({"success": True})
 
 @app.route("/api/exercises/<int:eid>", methods=["DELETE"])
+@login_required
 def delete_exercise(eid):
     query("DELETE FROM EXERCISE WHERE exercise_id=%s", (eid,), commit=True)
     return jsonify({"success": True})
@@ -185,12 +266,14 @@ def delete_exercise(eid):
 
 # ── PROGRESS ──────────────────────────────────────────────────────────────────
 @app.route("/api/progress", methods=["GET"])
+@login_required
 def get_progress():
     return jsonify(query(
         "SELECT p.*, u.email FROM PROGRESS p JOIN USER u ON p.user_id=u.user_id ORDER BY p.progress_date DESC"
     ))
 
 @app.route("/api/progress", methods=["POST"])
+@login_required
 def create_progress():
     d = request.json
     last_id = query(
@@ -200,6 +283,7 @@ def create_progress():
     return jsonify({"progress_id": last_id}), 201
 
 @app.route("/api/progress/<int:pid>", methods=["PUT"])
+@login_required
 def update_progress(pid):
     d = request.json
     query("UPDATE PROGRESS SET progress_date=%s, body_weight=%s, body_fat_percent=%s, notes=%s WHERE progress_id=%s",
@@ -207,6 +291,7 @@ def update_progress(pid):
     return jsonify({"success": True})
 
 @app.route("/api/progress/<int:pid>", methods=["DELETE"])
+@login_required
 def delete_progress(pid):
     query("DELETE FROM PROGRESS WHERE progress_id=%s", (pid,), commit=True)
     return jsonify({"success": True})
