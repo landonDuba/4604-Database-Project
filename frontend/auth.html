@@ -40,6 +40,7 @@
   .btn-submit:hover { background:#3de89e; }
   .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
   .error-msg { background:rgba(255,77,77,0.08); border:1px solid rgba(255,77,77,0.3); color:var(--danger); border-radius:6px; padding:9px 12px; font-size:11px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .success-msg { background:rgba(79,255,176,0.08); border:1px solid rgba(79,255,176,0.3); color:var(--accent); border-radius:6px; padding:9px 12px; font-size:11px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
   .card-footer { margin-top:20px; text-align:center; font-size:11px; color:var(--muted); }
   .card-footer a { color:var(--accent); cursor:pointer; }
   .spinner { width:14px; height:14px; border:2px solid rgba(13,15,20,0.3); border-top-color:#0d0f14; border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px; }
@@ -60,13 +61,30 @@
   .nav-item:hover { color:var(--text); background:var(--surface2); }
   .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--surface2); }
   .nav-icon { font-size:16px; width:20px; text-align:center; }
-  .sidebar-logout { margin-top:auto; padding:16px 20px 0; border-top:1px solid var(--border); }
+  .sidebar-logout { margin-top:auto; padding:16px 20px 0; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
   .btn-logout { width:100%; padding:8px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; transition:all 0.15s; }
   .btn-logout:hover { border-color:var(--danger); color:var(--danger); }
+  .btn-settings { width:100%; padding:8px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; transition:all 0.15s; }
+  .btn-settings:hover { border-color:var(--accent); color:var(--accent); }
   .main-area { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--muted); }
   .main-area .big-icon { font-size:48px; opacity:0.3; }
   .main-area p { font-size:13px; }
   .main-area span { color:var(--accent); }
+  /* modal */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:100; display:flex; align-items:center; justify-content:center; animation:fadeIn 0.15s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:400px; max-width:95vw; padding:28px; animation:fadeUp 0.2s ease both; }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .modal-title { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; }
+  .modal-close { width:26px; height:26px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+  .modal-close:hover { border-color:var(--text); color:var(--text); }
+  .modal-subtitle { font-size:11px; color:var(--muted); margin-bottom:20px; letter-spacing:0.3px; }
+  .modal-actions { display:flex; gap:8px; margin-top:6px; }
+  .btn-cancel { flex:1; padding:10px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all 0.15s; }
+  .btn-cancel:hover { border-color:var(--text); color:var(--text); }
+  .btn-primary { flex:1; padding:10px; background:var(--accent); color:#0d0f14; border:none; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+  .btn-primary:hover { background:#3de89e; }
+  .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -78,7 +96,7 @@
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
-const API = "http://localhost:5000/api";
+const API = "http://127.0.0.1:5000/api";
 
 async function apiFetch(path, method = "GET", body = null) {
   const opts = { method, headers: { "Content-Type": "application/json" }, credentials: "include" };
@@ -105,6 +123,95 @@ function pwStrength(pw) {
   return map[score - 1] || { pct: 10, color: "#ff4d4d", label: "weak" };
 }
 
+// ── Change Password Modal ─────────────────────────────────────────────────────
+function ChangePasswordModal({ onClose }) {
+  const [form, setForm] = useState({ current: "", newPw: "", confirm: "" });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const firstRef = useRef();
+
+  useEffect(() => { firstRef.current?.focus(); }, []);
+
+  const f = (k) => (e) => { setForm(p => ({...p, [k]: e.target.value})); setError(""); setSuccess(false); };
+
+  const submit = async () => {
+    setError(""); setSuccess(false);
+    if (!form.current || !form.newPw || !form.confirm) return setError("Please fill in all fields.");
+    if (form.newPw.length < 6) return setError("New password must be at least 6 characters.");
+    if (form.newPw !== form.confirm) return setError("New passwords do not match.");
+    if (form.current === form.newPw) return setError("New password must differ from current password.");
+    setLoading(true);
+    try {
+      await apiFetch("/auth/change-password", "POST", {
+        current_password: form.current,
+        new_password: form.newPw,
+      });
+      setSuccess(true);
+      setForm({ current: "", newPw: "", confirm: "" });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const strength = pwStrength(form.newPw);
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">Change password</div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-subtitle">Updating your password will sign you out of all other sessions.</div>
+
+        {error && <div className="error-msg"><span>✗</span> {error}</div>}
+        {success && <div className="success-msg"><span>✓</span> Password updated successfully!</div>}
+
+        <div className="field">
+          <label>Current password</label>
+          <div className="input-wrap">
+            <span className="input-icon">🔑</span>
+            <input ref={firstRef} type="password" placeholder="Your current password" value={form.current} onChange={f("current")} onKeyDown={e => e.key === "Enter" && submit()} />
+          </div>
+        </div>
+
+        <div className="field">
+          <label>New password</label>
+          <div className="input-wrap">
+            <span className="input-icon">🔒</span>
+            <input type="password" placeholder="Min. 6 characters" value={form.newPw} onChange={f("newPw")} onKeyDown={e => e.key === "Enter" && submit()} />
+          </div>
+          {form.newPw && (
+            <div>
+              <div className="pw-strength"><div className="pw-strength-fill" style={{ width: `${strength.pct}%`, background: strength.color }}></div></div>
+              <div style={{ fontSize: 10, color: strength.color, marginTop: 3 }}>{strength.label}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="field">
+          <label>Confirm new password</label>
+          <div className="input-wrap">
+            <span className="input-icon">🔒</span>
+            <input type="password" placeholder="Re-enter new password" value={form.confirm} onChange={f("confirm")} onKeyDown={e => e.key === "Enter" && submit()} />
+          </div>
+        </div>
+
+        <div className="modal-actions">
+          <button className="btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" onClick={submit} disabled={loading}>
+            {loading ? <><span className="spinner"></span>Updating...</> : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Auth Card ─────────────────────────────────────────────────────────────────
 function AuthCard({ onLogin }) {
   const [tab, setTab] = useState("login");
   const [form, setForm] = useState({ email: "", password: "", confirm: "" });
@@ -188,6 +295,7 @@ function AuthCard({ onLogin }) {
   );
 }
 
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 const NAV = [
   { id:"users", icon:"👤", label:"Users" }, { id:"meals", icon:"🍽️", label:"Meals" },
   { id:"foods", icon:"🥦", label:"Foods" }, { id:"workouts", icon:"💪", label:"Workouts" },
@@ -196,9 +304,13 @@ const NAV = [
 
 function Dashboard({ user, onLogout }) {
   const [page, setPage] = useState("");
+  const [showChangePw, setShowChangePw] = useState(false);
+
   const logout = async () => { await apiFetch("/auth/logout", "POST"); onLogout(); };
+
   return (
     <div className="dashboard">
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
       <nav className="sidebar">
         <div className="sidebar-logo"><div className="logo-dot"></div>FIT<span>TRACK</span></div>
         <div className="sidebar-user">
@@ -211,6 +323,7 @@ function Dashboard({ user, onLogout }) {
           </div>
         ))}
         <div className="sidebar-logout">
+          <button className="btn-settings" onClick={() => setShowChangePw(true)}>⚙ Change password</button>
           <button className="btn-logout" onClick={logout}>↩ Sign Out</button>
         </div>
       </nav>
@@ -225,11 +338,11 @@ function Dashboard({ user, onLogout }) {
   );
 }
 
+// ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
 
-  // Resume existing session on page load
   useEffect(() => {
     apiFetch("/auth/me")
       .then(u => setUser(u))

@@ -5,9 +5,15 @@ import bcrypt
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-a-random-secret"  # TODO: use os.urandom(24) in production
+app.config.update(
+    SESSION_COOKIE_SAMESITE="Lax"
+)
 
-CORS(app, supports_credentials=True, origins=["null", "http://localhost", "http://127.0.0.1:5500"])
-
+CORS(
+    app,
+    supports_credentials=True,
+    origins=["http://127.0.0.1:5500"]
+)
 # ── DB CONFIG ─────────────────────────────────────────────────────────────────
 DB_CONFIG = {
     "host": "localhost",
@@ -42,6 +48,27 @@ def login_required(f):
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated
+
+@app.route("/api/auth/change-password", methods=["POST"])
+@login_required
+def change_password():
+    d = request.json
+    current = d.get("current_password", "")
+    new_pw  = d.get("new_password", "")
+
+    if not current or not new_pw:
+        return jsonify({"error": "Both fields are required"}), 400
+    if len(new_pw) < 6:
+        return jsonify({"error": "New password must be at least 6 characters"}), 400
+
+    user = query("SELECT * FROM USER WHERE user_id=%s", (session["user_id"],), fetchone=True)
+    if not bcrypt.checkpw(current.encode(), user["password_hash"].encode()):
+        return jsonify({"error": "Current password is incorrect"}), 401
+
+    new_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+    query("UPDATE USER SET password_hash=%s WHERE user_id=%s",
+          (new_hash, session["user_id"]), commit=True)
+    return jsonify({"success": True})
 
 
 # ── AUTH ROUTES ───────────────────────────────────────────────────────────────
