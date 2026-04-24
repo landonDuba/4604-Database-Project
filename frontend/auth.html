@@ -3,88 +3,160 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>FitTrack — Auth</title>
+<title>FitTrack</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
   :root {
-    --bg: #0d0f14; --surface: #151820; --surface2: #1c2030; --border: #252a3a;
-    --accent: #4fffb0; --accent2: #7c6fff; --text: #e8eaf0; --muted: #6b7280; --danger: #ff4d4d;
+    --bg:#0d0f14;--surface:#151820;--surface2:#1c2030;--border:#252a3a;
+    --accent:#4fffb0;--accent2:#7c6fff;--text:#e8eaf0;--muted:#6b7280;
+    --danger:#ff4d4d;--warn:#ff9f43;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background:var(--bg); color:var(--text); font-family:'DM Mono',monospace; min-height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  body::before { content:''; position:fixed; inset:0; background-image:linear-gradient(rgba(79,255,176,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,255,176,0.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; z-index:0; }
-  .blob { position:fixed; border-radius:50%; filter:blur(80px); opacity:0.12; pointer-events:none; z-index:0; animation:drift 10s ease-in-out infinite alternate; }
-  .blob-1 { width:400px; height:400px; background:var(--accent); top:-80px; left:-80px; }
-  .blob-2 { width:300px; height:300px; background:var(--accent2); bottom:-60px; right:-60px; animation-delay:-4s; }
-  @keyframes drift { from{transform:translate(0,0) scale(1)} to{transform:translate(30px,20px) scale(1.05)} }
-  .card { position:relative; z-index:1; background:var(--surface); border:1px solid var(--border); border-radius:16px; width:420px; max-width:95vw; padding:36px; animation:fadeUp 0.35s ease both; }
-  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:var(--accent); letter-spacing:-0.5px; margin-bottom:28px; display:flex; align-items:center; gap:8px; }
-  .logo span { color:var(--text); }
-  .logo-dot { width:7px; height:7px; background:var(--accent); border-radius:50%; box-shadow:0 0 8px var(--accent); animation:pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-  .tabs { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:3px; margin-bottom:28px; gap:3px; }
-  .tab { flex:1; padding:8px; text-align:center; font-size:12px; font-family:'DM Mono',monospace; letter-spacing:0.5px; border-radius:6px; border:none; cursor:pointer; transition:all 0.2s; color:var(--muted); background:transparent; }
-  .tab.active { background:var(--accent); color:#0d0f14; font-weight:500; }
-  .tab:not(.active):hover { color:var(--text); }
-  .form-title { font-family:'Syne',sans-serif; font-weight:700; font-size:20px; margin-bottom:6px; }
-  .form-subtitle { font-size:11px; color:var(--muted); margin-bottom:22px; letter-spacing:0.3px; }
-  .field { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
-  label { font-size:10px; color:var(--muted); letter-spacing:0.8px; text-transform:uppercase; }
-  .input-wrap { position:relative; }
-  .input-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:13px; pointer-events:none; opacity:0.5; }
-  input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 12px 10px 36px; color:var(--text); font-family:'DM Mono',monospace; font-size:12px; outline:none; transition:border-color 0.15s,box-shadow 0.15s; }
-  input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,255,176,0.08); }
-  input::placeholder { color:var(--muted); opacity:0.6; }
-  .btn-submit { width:100%; padding:11px; margin-top:6px; background:var(--accent); color:#0d0f14; border:none; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; font-weight:500; letter-spacing:0.5px; cursor:pointer; transition:all 0.15s; }
-  .btn-submit:hover { background:#3de89e; }
-  .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
-  .error-msg { background:rgba(255,77,77,0.08); border:1px solid rgba(255,77,77,0.3); color:var(--danger); border-radius:6px; padding:9px 12px; font-size:11px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-  .success-msg { background:rgba(79,255,176,0.08); border:1px solid rgba(79,255,176,0.3); color:var(--accent); border-radius:6px; padding:9px 12px; font-size:11px; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-  .card-footer { margin-top:20px; text-align:center; font-size:11px; color:var(--muted); }
-  .card-footer a { color:var(--accent); cursor:pointer; }
-  .spinner { width:14px; height:14px; border:2px solid rgba(13,15,20,0.3); border-top-color:#0d0f14; border-radius:50%; animation:spin 0.6s linear infinite; display:inline-block; vertical-align:middle; margin-right:6px; }
-  @keyframes spin { to{transform:rotate(360deg)} }
-  .pw-strength { margin-top:5px; height:3px; border-radius:2px; background:var(--border); overflow:hidden; }
-  .pw-strength-fill { height:100%; border-radius:2px; transition:width 0.3s,background 0.3s; }
-  /* dashboard */
-  .dashboard { position:relative; z-index:1; display:flex; min-height:100vh; width:100vw; animation:fadeUp 0.3s ease both; }
-  .sidebar { width:220px; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:24px 0; position:sticky; top:0; height:100vh; }
-  .sidebar-logo { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; padding:0 20px 28px; color:var(--accent); letter-spacing:-0.5px; border-bottom:1px solid var(--border); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
-  .sidebar-logo span { color:var(--text); }
-  .sidebar-user { padding:16px 20px; font-size:11px; color:var(--muted); border-bottom:1px solid var(--border); margin-bottom:12px; }
-  .sidebar-user strong { display:block; color:var(--text); font-size:12px; margin-bottom:2px; }
-  .sidebar-badge { display:inline-block; padding:1px 7px; border-radius:100px; font-size:10px; margin-top:4px; }
-  .badge-green { background:rgba(79,255,176,0.12); color:var(--accent); }
-  .badge-purple { background:rgba(124,111,255,0.12); color:var(--accent2); }
-  .nav-item { display:flex; align-items:center; gap:10px; padding:10px 20px; cursor:pointer; font-size:13px; color:var(--muted); transition:all 0.15s; border-left:2px solid transparent; user-select:none; }
-  .nav-item:hover { color:var(--text); background:var(--surface2); }
-  .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:var(--surface2); }
-  .nav-icon { font-size:16px; width:20px; text-align:center; }
-  .sidebar-logout { margin-top:auto; padding:16px 20px 0; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
-  .btn-logout { width:100%; padding:8px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; transition:all 0.15s; }
-  .btn-logout:hover { border-color:var(--danger); color:var(--danger); }
-  .btn-settings { width:100%; padding:8px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:11px; cursor:pointer; transition:all 0.15s; }
-  .btn-settings:hover { border-color:var(--accent); color:var(--accent); }
-  .main-area { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--muted); }
-  .main-area .big-icon { font-size:48px; opacity:0.3; }
-  .main-area p { font-size:13px; }
-  .main-area span { color:var(--accent); }
-  /* modal */
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:100; display:flex; align-items:center; justify-content:center; animation:fadeIn 0.15s ease; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:400px; max-width:95vw; padding:28px; animation:fadeUp 0.2s ease both; }
-  .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-  .modal-title { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; }
-  .modal-close { width:26px; height:26px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
-  .modal-close:hover { border-color:var(--text); color:var(--text); }
-  .modal-subtitle { font-size:11px; color:var(--muted); margin-bottom:20px; letter-spacing:0.3px; }
-  .modal-actions { display:flex; gap:8px; margin-top:6px; }
-  .btn-cancel { flex:1; padding:10px; background:transparent; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-family:'DM Mono',monospace; font-size:12px; cursor:pointer; transition:all 0.15s; }
-  .btn-cancel:hover { border-color:var(--text); color:var(--text); }
-  .btn-primary { flex:1; padding:10px; background:var(--accent); color:#0d0f14; border:none; border-radius:6px; font-family:'DM Mono',monospace; font-size:12px; font-weight:500; cursor:pointer; transition:all 0.15s; }
-  .btn-primary:hover { background:#3de89e; }
-  .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,255,176,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,255,176,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+  .blob{position:fixed;border-radius:50%;filter:blur(80px);opacity:0.12;pointer-events:none;z-index:0;animation:drift 10s ease-in-out infinite alternate;}
+  .blob-1{width:400px;height:400px;background:var(--accent);top:-80px;left:-80px;}
+  .blob-2{width:300px;height:300px;background:var(--accent2);bottom:-60px;right:-60px;animation-delay:-4s;}
+  @keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(30px,20px) scale(1.05)}}
+  /* AUTH */
+  .card{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-radius:16px;width:420px;max-width:95vw;padding:36px;animation:fadeUp 0.35s ease both;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--accent);letter-spacing:-0.5px;margin-bottom:28px;display:flex;align-items:center;gap:8px;}
+  .logo span{color:var(--text);}
+  .logo-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 8px var(--accent);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .tabs{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:28px;gap:3px;}
+  .tab{flex:1;padding:8px;text-align:center;font-size:12px;font-family:'DM Mono',monospace;letter-spacing:0.5px;border-radius:6px;border:none;cursor:pointer;transition:all 0.2s;color:var(--muted);background:transparent;}
+  .tab.active{background:var(--accent);color:#0d0f14;font-weight:500;}
+  .tab:not(.active):hover{color:var(--text);}
+  .form-title{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;margin-bottom:6px;}
+  .form-subtitle{font-size:11px;color:var(--muted);margin-bottom:22px;letter-spacing:0.3px;}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  label{font-size:10px;color:var(--muted);letter-spacing:0.8px;text-transform:uppercase;}
+  .input-wrap{position:relative;}
+  .input-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;pointer-events:none;opacity:0.5;}
+  input,select,textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 12px 10px 36px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color 0.15s,box-shadow 0.15s;}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,255,176,0.08);}
+  input::placeholder,textarea::placeholder{color:var(--muted);opacity:0.6;}
+  select option{background:var(--surface2);}
+  .btn-submit{width:100%;padding:11px;margin-top:6px;background:var(--accent);color:#0d0f14;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:0.5px;cursor:pointer;transition:all 0.15s;}
+  .btn-submit:hover{background:#3de89e;}
+  .btn-submit:disabled{opacity:0.5;cursor:not-allowed;}
+  .error-msg{background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.3);color:var(--danger);border-radius:6px;padding:9px 12px;font-size:11px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .success-msg{background:rgba(79,255,176,0.08);border:1px solid rgba(79,255,176,0.3);color:var(--accent);border-radius:6px;padding:9px 12px;font-size:11px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .card-footer{margin-top:20px;text-align:center;font-size:11px;color:var(--muted);}
+  .card-footer a{color:var(--accent);cursor:pointer;}
+  .spinner{width:14px;height:14px;border:2px solid rgba(13,15,20,0.3);border-top-color:#0d0f14;border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px;}
+  .spinner-sm{width:12px;height:12px;border:2px solid rgba(79,255,176,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.6s linear infinite;display:inline-block;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pw-strength{margin-top:5px;height:3px;border-radius:2px;background:var(--border);overflow:hidden;}
+  .pw-strength-fill{height:100%;border-radius:2px;transition:width 0.3s,background 0.3s;}
+  .admin-toggle{margin-bottom:14px;}
+  .admin-toggle-btn{background:transparent;border:1px dashed var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;padding:6px 12px;border-radius:6px;cursor:pointer;width:100%;transition:all 0.15s;letter-spacing:0.5px;}
+  .admin-toggle-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+  /* DASHBOARD */
+  .dashboard{position:relative;z-index:1;display:flex;width:100vw;height:100vh;overflow:hidden;animation:fadeUp 0.3s ease both;}
+  .sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;height:100vh;overflow-y:auto;}
+  .sidebar-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;padding:20px;color:var(--accent);letter-spacing:-0.5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+  .sidebar-logo span{color:var(--text);}
+  .sidebar-user{padding:14px 20px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);}
+  .sidebar-user strong{display:block;color:var(--text);font-size:12px;margin-bottom:4px;}
+  .sidebar-badge{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;}
+  .badge-green{background:rgba(79,255,176,0.12);color:var(--accent);}
+  .badge-purple{background:rgba(124,111,255,0.12);color:var(--accent2);}
+  .nav-section{padding:12px 20px 6px;font-size:9px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;font-size:12px;color:var(--muted);transition:all 0.15s;border-left:2px solid transparent;user-select:none;}
+  .nav-item:hover{color:var(--text);background:var(--surface2);}
+  .nav-item.active{color:var(--accent);border-left-color:var(--accent);background:var(--surface2);}
+  .nav-icon{font-size:15px;width:20px;text-align:center;}
+  .sidebar-bottom{margin-top:auto;padding:16px 20px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+  .btn-sidebar{width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.15s;}
+  .btn-sidebar:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-danger-sm{width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.15s;}
+  .btn-danger-sm:hover{border-color:var(--danger);color:var(--danger);}
+  /* MAIN */
+  .main-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+  .page-header{padding:24px 28px 0;border-bottom:1px solid var(--border);padding-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .page-title{font-family:'Syne',sans-serif;font-weight:700;font-size:20px;}
+  .page-subtitle{font-size:11px;color:var(--muted);margin-top:3px;}
+  .page-content{padding:24px 28px;flex:1;}
+  /* WELCOME */
+  .welcome-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .stat-label{font-size:10px;color:var(--muted);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px;}
+  .stat-value{font-family:'Syne',sans-serif;font-weight:700;font-size:26px;color:var(--accent);}
+  .stat-sub{font-size:10px;color:var(--muted);margin-top:4px;}
+  /* TABLE */
+  .table-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;}
+  .search-wrap{position:relative;flex:1;max-width:300px;}
+  .search-wrap input{padding-left:32px;font-size:11px;}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;opacity:0.4;pointer-events:none;}
+  .btn-add{padding:9px 16px;background:var(--accent);color:#0d0f14;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .btn-add:hover{background:#3de89e;}
+  .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;}
+  th{padding:10px 14px;text-align:left;font-size:10px;color:var(--muted);letter-spacing:0.8px;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--surface2);}
+  td{padding:10px 14px;font-size:11px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,0.02);}
+  .td-actions{display:flex;gap:6px;justify-content:flex-end;}
+  .btn-edit{padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.12s;}
+  .btn-edit:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-del{padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.12s;}
+  .btn-del:hover{border-color:var(--danger);color:var(--danger);}
+  .empty-state{padding:48px;text-align:center;color:var(--muted);font-size:12px;}
+  .empty-icon{font-size:36px;opacity:0.3;display:block;margin-bottom:10px;}
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:200;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.15s ease;}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:28px;animation:fadeUp 0.2s ease both;}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;}
+  .modal-close{width:26px;height:26px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+  .modal-close:hover{border-color:var(--text);color:var(--text);}
+  .modal-subtitle{font-size:11px;color:var(--muted);margin-bottom:20px;letter-spacing:0.3px;}
+  .modal-actions{display:flex;gap:8px;margin-top:20px;}
+  .btn-cancel{flex:1;padding:10px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;transition:all 0.15s;}
+  .btn-cancel:hover{border-color:var(--text);color:var(--text);}
+  .btn-primary{flex:1;padding:10px;background:var(--accent);color:#0d0f14;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+  .btn-primary:hover{background:#3de89e;}
+  .btn-primary:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-danger{flex:1;padding:10px;background:var(--danger);color:#fff;border:none;border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;}
+  .btn-danger:hover{background:#e03030;}
+  /* MISC */
+  .tag{display:inline-block;padding:2px 8px;border-radius:100px;font-size:10px;}
+  .tag-admin{background:rgba(124,111,255,0.15);color:var(--accent2);}
+  .tag-regular{background:rgba(79,255,176,0.1);color:var(--accent);}
+  .no-input{padding-left:12px !important;}
+  .input-wrap select{padding-left:36px;}
+  .confirm-modal{max-width:360px;}
+  /* PICKER STYLES */
+  .picker-section{margin-bottom:16px;}
+  .picker-label{font-size:10px;color:var(--muted);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px;}
+  .picker-search{position:relative;margin-bottom:8px;}
+  .picker-search input{padding-left:32px;font-size:11px;}
+  .picker-list{background:var(--surface2);border:1px solid var(--border);border-radius:8px;max-height:160px;overflow-y:auto;}
+  .picker-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:11px;transition:background 0.1s;gap:8px;}
+  .picker-item:hover{background:rgba(79,255,176,0.04);}
+  .picker-item:not(:last-child){border-bottom:1px solid var(--border);}
+  .picker-item-name{flex:1;color:var(--text);}
+  .picker-item-meta{font-size:10px;color:var(--muted);white-space:nowrap;}
+  .picker-item-add{padding:2px 8px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.12s;white-space:nowrap;}
+  .picker-item-add:hover{border-color:var(--accent);color:var(--accent);}
+  .picker-item-add:disabled{opacity:0.3;cursor:not-allowed;}
+  .selected-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+  .selected-item{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;}
+  .selected-item-name{flex:1;font-size:11px;color:var(--text);}
+  .selected-item-meta{font-size:10px;color:var(--muted);}
+  .selected-qty{width:60px;padding:4px 8px !important;font-size:11px;text-align:center;}
+  .selected-remove{width:22px;height:22px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s;flex-shrink:0;}
+  .selected-remove:hover{border-color:var(--danger);color:var(--danger);}
+  .picker-empty{padding:20px;text-align:center;color:var(--muted);font-size:11px;}
+  .calorie-summary{background:rgba(79,255,176,0.06);border:1px solid rgba(79,255,176,0.15);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--accent);margin-top:8px;display:flex;justify-content:space-between;align-items:center;}
+  .sets-reps-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+  .sets-reps-grid input{padding:4px 6px !important;font-size:10px;text-align:center;}
+  .slot-count{font-size:10px;color:var(--muted);margin-top:4px;}
+  .slot-count span{color:var(--accent);}
 </style>
 </head>
 <body>
@@ -95,8 +167,9 @@
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script type="text/babel">
-const { useState, useEffect, useRef } = React;
+const { useState, useEffect, useRef, useCallback } = React;
 const API = "http://127.0.0.1:5000/api";
+const ADMIN_CODE = "fittrack-admin-2024";
 
 async function apiFetch(path, method = "GET", body = null) {
   const opts = { method, headers: { "Content-Type": "application/json" }, credentials: "include" };
@@ -123,18 +196,66 @@ function pwStrength(pw) {
   return map[score - 1] || { pct: 10, color: "#ff4d4d", label: "weak" };
 }
 
-// ── Change Password Modal ─────────────────────────────────────────────────────
+// Normalize any date/datetime string into the "YYYY-MM-DDTHH:MM" format
+// that datetime-local inputs require. Handles ISO strings, RFC strings, etc.
+function toDatetimeLocal(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return "";
+  // Use local time components to avoid timezone shifting the date
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Same but date-only: "YYYY-MM-DD"
+function toDateLocal(v) {
+  if (!v) return "";
+  const d = new Date(v);
+  if (isNaN(d)) return "";
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function Field({ label, icon, children }) {
+  return (
+    <div className="field">
+      {label && <label>{label}</label>}
+      <div className="input-wrap">
+        {icon && <span className="input-icon">{icon}</span>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ title, message, onConfirm, onClose, loading }) {
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal confirm-modal">
+        <div className="modal-header">
+          <div className="modal-title">{title}</div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-subtitle" style={{ marginTop: 8 }}>{message}</div>
+        <div className="modal-actions">
+          <button className="btn-cancel" onClick={onClose}>Cancel</button>
+          <button className="btn-danger" onClick={onConfirm} disabled={loading}>
+            {loading ? <><span className="spinner"></span>Deleting...</> : "Delete"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChangePasswordModal({ onClose }) {
   const [form, setForm] = useState({ current: "", newPw: "", confirm: "" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const firstRef = useRef();
-
   useEffect(() => { firstRef.current?.focus(); }, []);
-
-  const f = (k) => (e) => { setForm(p => ({...p, [k]: e.target.value})); setError(""); setSuccess(false); };
-
+  const f = k => e => { setForm(p => ({...p, [k]: e.target.value})); setError(""); setSuccess(false); };
   const submit = async () => {
     setError(""); setSuccess(false);
     if (!form.current || !form.newPw || !form.confirm) return setError("Please fill in all fields.");
@@ -143,21 +264,13 @@ function ChangePasswordModal({ onClose }) {
     if (form.current === form.newPw) return setError("New password must differ from current password.");
     setLoading(true);
     try {
-      await apiFetch("/auth/change-password", "POST", {
-        current_password: form.current,
-        new_password: form.newPw,
-      });
+      await apiFetch("/auth/change-password", "POST", { current_password: form.current, new_password: form.newPw });
       setSuccess(true);
       setForm({ current: "", newPw: "", confirm: "" });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
-
   const strength = pwStrength(form.newPw);
-
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -165,41 +278,22 @@ function ChangePasswordModal({ onClose }) {
           <div className="modal-title">Change password</div>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
-        <div className="modal-subtitle">Updating your password will sign you out of all other sessions.</div>
-
+        <div className="modal-subtitle">Updating your password will sign you out of other sessions.</div>
         {error && <div className="error-msg"><span>✗</span> {error}</div>}
         {success && <div className="success-msg"><span>✓</span> Password updated successfully!</div>}
-
-        <div className="field">
-          <label>Current password</label>
-          <div className="input-wrap">
-            <span className="input-icon">🔑</span>
-            <input ref={firstRef} type="password" placeholder="Your current password" value={form.current} onChange={f("current")} onKeyDown={e => e.key === "Enter" && submit()} />
-          </div>
-        </div>
-
-        <div className="field">
-          <label>New password</label>
-          <div className="input-wrap">
-            <span className="input-icon">🔒</span>
-            <input type="password" placeholder="Min. 6 characters" value={form.newPw} onChange={f("newPw")} onKeyDown={e => e.key === "Enter" && submit()} />
-          </div>
-          {form.newPw && (
-            <div>
-              <div className="pw-strength"><div className="pw-strength-fill" style={{ width: `${strength.pct}%`, background: strength.color }}></div></div>
-              <div style={{ fontSize: 10, color: strength.color, marginTop: 3 }}>{strength.label}</div>
-            </div>
-          )}
-        </div>
-
-        <div className="field">
-          <label>Confirm new password</label>
-          <div className="input-wrap">
-            <span className="input-icon">🔒</span>
-            <input type="password" placeholder="Re-enter new password" value={form.confirm} onChange={f("confirm")} onKeyDown={e => e.key === "Enter" && submit()} />
-          </div>
-        </div>
-
+        <Field label="Current password" icon="🔑">
+          <input ref={firstRef} type="password" placeholder="Your current password" value={form.current} onChange={f("current")} onKeyDown={e => e.key === "Enter" && submit()} />
+        </Field>
+        <Field label="New password" icon="🔒">
+          <input type="password" placeholder="Min. 6 characters" value={form.newPw} onChange={f("newPw")} onKeyDown={e => e.key === "Enter" && submit()} />
+        </Field>
+        {form.newPw && <div style={{ marginTop: -8, marginBottom: 14 }}>
+          <div className="pw-strength"><div className="pw-strength-fill" style={{ width: `${strength.pct}%`, background: strength.color }}></div></div>
+          <div style={{ fontSize: 10, color: strength.color, marginTop: 3 }}>{strength.label}</div>
+        </div>}
+        <Field label="Confirm new password" icon="🔒">
+          <input type="password" placeholder="Re-enter new password" value={form.confirm} onChange={f("confirm")} onKeyDown={e => e.key === "Enter" && submit()} />
+        </Field>
         <div className="modal-actions">
           <button className="btn-cancel" onClick={onClose}>Cancel</button>
           <button className="btn-primary" onClick={submit} disabled={loading}>
@@ -211,35 +305,1078 @@ function ChangePasswordModal({ onClose }) {
   );
 }
 
-// ── Auth Card ─────────────────────────────────────────────────────────────────
+function CrudTable({ title, subtitle, columns, rows, onAdd, onEdit, onDelete, loading, searchKeys = [], canEdit, canDelete }) {
+  const [search, setSearch] = useState("");
+  const [delTarget, setDelTarget] = useState(null);
+  const [delLoading, setDelLoading] = useState(false);
+
+  const filtered = search
+    ? rows.filter(r => searchKeys.some(k => String(r[k] ?? "").toLowerCase().includes(search.toLowerCase())))
+    : rows;
+
+  const handleDelete = async () => {
+    if (!onDelete || !delTarget) return;
+    setDelLoading(true);
+    await onDelete(delTarget);
+    setDelLoading(false);
+    setDelTarget(null);
+  };
+
+  const anyRowActions = Boolean(onEdit) || Boolean(onDelete);
+
+  return (
+    <>
+      {delTarget && (
+        <ConfirmModal
+          title="Delete record"
+          message="This action cannot be undone. Are you sure?"
+          onConfirm={handleDelete}
+          onClose={() => setDelTarget(null)}
+          loading={delLoading}
+        />
+      )}
+      <div className="page-header">
+        <div>
+          <div className="page-title">{title}</div>
+          <div className="page-subtitle">{subtitle}</div>
+        </div>
+      </div>
+      <div className="page-content">
+        <div className="table-toolbar">
+          {searchKeys.length > 0 && (
+            <div className="search-wrap">
+              <span className="search-icon">🔍</span>
+              <input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          )}
+          {/* Only show Add button if an onAdd handler was provided */}
+          {typeof onAdd === 'function' && <button className="btn-add" onClick={onAdd}>+ Add {title.slice(0,-1) || "Record"}</button>}
+        </div>
+        <div className="table-wrap">
+          {loading ? (
+            <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-icon">📭</span>
+              {search ? "No results found." : `No ${title.toLowerCase()} yet.${typeof onAdd === 'function' ? ' Add one!' : ''}`}
+            </div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  {columns.map(c => <th key={c.key}>{c.label}</th>)}
+                  {anyRowActions && <th style={{textAlign:'right'}}>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((row, i) => {
+                  const showEdit = Boolean(onEdit) && (!canEdit || canEdit(row));
+                  const showDel = Boolean(onDelete) && (!canDelete || canDelete(row));
+                  return (
+                    <tr key={i}>
+                      {columns.map(c => (
+                        <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>
+                      ))}
+                      {anyRowActions && (
+                        <td>
+                          <div className="td-actions">
+                            {showEdit && <button className="btn-edit" onClick={() => onEdit(row)}>Edit</button>}
+                            {showDel && <button className="btn-del" onClick={() => setDelTarget(row)}>Delete</button>}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── FOOD PICKER (for Meals modal) ─────────────────────────────────────────────
+function FoodPicker({ selected, onChange, allFoods }) {
+  const [search, setSearch] = useState("");
+  const MAX = 5;
+
+  const filtered = allFoods.filter(f =>
+    f.food_name.toLowerCase().includes(search.toLowerCase()) &&
+    !selected.find(s => s.food_id === f.food_id)
+  );
+
+  const addFood = (food) => {
+    if (selected.length >= MAX) return;
+    onChange([...selected, { food_id: food.food_id, food_name: food.food_name, calories_per_serving: food.calories_per_serving, quantity_servings: 1 }]);
+  };
+
+  const removeFood = (food_id) => onChange(selected.filter(s => s.food_id !== food_id));
+
+  const updateQty = (food_id, qty) => {
+    onChange(selected.map(s => s.food_id === food_id ? { ...s, quantity_servings: qty } : s));
+  };
+
+  const totalCal = selected.reduce((sum, s) => {
+    const cal = parseFloat(s.calories_per_serving) || 0;
+    const qty = parseFloat(s.quantity_servings) || 0;
+    return sum + cal * qty;
+  }, 0);
+
+  return (
+    <div className="picker-section">
+      <div className="picker-label">Select foods (up to {MAX})</div>
+
+      {/* Selected foods */}
+      {selected.length > 0 && (
+        <div className="selected-list" style={{ marginBottom: 10 }}>
+          {selected.map(item => (
+            <div className="selected-item" key={item.food_id}>
+              <span className="selected-item-name">{item.food_name}</span>
+              <span className="selected-item-meta">{item.calories_per_serving ? `${item.calories_per_serving} kcal/srv` : ""}</span>
+              <input
+                type="number"
+                className="selected-qty"
+                style={{ paddingLeft: "8px" }}
+                min="0.1"
+                step="0.5"
+                value={item.quantity_servings}
+                onChange={e => updateQty(item.food_id, e.target.value)}
+                title="Servings"
+                placeholder="srv"
+              />
+              <button className="selected-remove" onClick={() => removeFood(item.food_id)}>✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <div className="calorie-summary">
+          <span>Estimated total</span>
+          <strong>{Math.round(totalCal)} kcal</strong>
+        </div>
+      )}
+
+      {selected.length < MAX && (
+        <>
+          <div style={{ marginTop: 10 }}>
+            <div className="picker-search">
+              <span className="search-icon" style={{ fontSize: 11, opacity: 0.4 }}>🔍</span>
+              <input
+                style={{ paddingLeft: 28 }}
+                placeholder="Search foods to add..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="picker-list">
+              {filtered.length === 0 ? (
+                <div className="picker-empty">{allFoods.length === 0 ? "No foods in library yet." : "No matches."}</div>
+              ) : filtered.map(food => (
+                <div className="picker-item" key={food.food_id}>
+                  <span className="picker-item-name">{food.food_name}</span>
+                  <span className="picker-item-meta">{food.calories_per_serving ? `${food.calories_per_serving} kcal` : ""}</span>
+                  <button className="picker-item-add" onClick={() => addFood(food)} disabled={selected.length >= MAX}>
+                    + Add
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="slot-count">
+            <span>{selected.length}</span>/{MAX} foods selected
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── EXERCISE PICKER (for Workouts modal) ──────────────────────────────────────
+function ExercisePicker({ selected, onChange, allExercises }) {
+  const [search, setSearch] = useState("");
+  const MAX = 5;
+
+  const filtered = allExercises.filter(e =>
+    (e.exercise_name.toLowerCase().includes(search.toLowerCase()) ||
+     (e.muscle_group || "").toLowerCase().includes(search.toLowerCase())) &&
+    !selected.find(s => s.exercise_id === e.exercise_id)
+  );
+
+  const addExercise = (ex) => {
+    if (selected.length >= MAX) return;
+    onChange([...selected, { exercise_id: ex.exercise_id, exercise_name: ex.exercise_name, muscle_group: ex.muscle_group, sets: 3, reps: 10, duration_min: "" }]);
+  };
+
+  const removeExercise = (exercise_id) => onChange(selected.filter(s => s.exercise_id !== exercise_id));
+
+  const updateField = (exercise_id, field, val) => {
+    onChange(selected.map(s => s.exercise_id === exercise_id ? { ...s, [field]: val } : s));
+  };
+
+  return (
+    <div className="picker-section">
+      <div className="picker-label">Select exercises (up to {MAX})</div>
+
+      {selected.length > 0 && (
+        <div className="selected-list" style={{ marginBottom: 10 }}>
+          {selected.map(item => (
+            <div key={item.exercise_id} style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ flex: 1, fontSize: 11, color: "var(--text)" }}>{item.exercise_name}</span>
+                {item.muscle_group && <span style={{ fontSize: 10, color: "var(--muted)" }}>{item.muscle_group}</span>}
+                <button className="selected-remove" onClick={() => removeExercise(item.exercise_id)}>✕</button>
+              </div>
+              <div className="sets-reps-grid">
+                <div>
+                  <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 3, letterSpacing: "0.5px" }}>SETS</div>
+                  <input
+                    type="number"
+                    style={{ paddingLeft: "8px", width: "100%" }}
+                    min="1"
+                    value={item.sets}
+                    onChange={e => updateField(item.exercise_id, "sets", e.target.value)}
+                    placeholder="Sets"
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 3, letterSpacing: "0.5px" }}>REPS</div>
+                  <input
+                    type="number"
+                    style={{ paddingLeft: "8px", width: "100%" }}
+                    min="1"
+                    value={item.reps}
+                    onChange={e => updateField(item.exercise_id, "reps", e.target.value)}
+                    placeholder="Reps"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selected.length < MAX && (
+        <>
+          <div className="picker-search">
+            <span className="search-icon" style={{ fontSize: 11, opacity: 0.4 }}>🔍</span>
+            <input
+              style={{ paddingLeft: 28 }}
+              placeholder="Search exercises..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="picker-list">
+            {filtered.length === 0 ? (
+              <div className="picker-empty">{allExercises.length === 0 ? "No exercises in library yet." : "No matches."}</div>
+            ) : filtered.map(ex => (
+              <div className="picker-item" key={ex.exercise_id}>
+                <span className="picker-item-name">{ex.exercise_name}</span>
+                <span className="picker-item-meta">{ex.muscle_group || ""}</span>
+                <button className="picker-item-add" onClick={() => addExercise(ex)} disabled={selected.length >= MAX}>
+                  + Add
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="slot-count">
+            <span>{selected.length}</span>/{MAX} exercises selected
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── MEALS PAGE ────────────────────────────────────────────────────────────────
+function MealsPage({ user }) {
+  const [rows, setRows] = useState([]);
+  const [allFoods, setAllFoods] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [selectedFoods, setSelectedFoods] = useState([]);
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isAdmin = user.user_type === "admin";
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [meals, foods] = await Promise.all([
+        apiFetch(isAdmin ? "/meals" : `/meals?user_id=${user.user_id}`),
+        apiFetch("/foods"),
+      ]);
+      setRows(meals);
+      setAllFoods(foods);
+    } catch(e) {}
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => {
+    setForm({ meal_name: "", meal_datetime: new Date().toISOString().slice(0,16) });
+    setSelectedFoods([]);
+    setErr("");
+    setModal("add");
+  };
+
+  const openEdit = row => {
+    setForm({ ...row, meal_datetime: toDatetimeLocal(row.meal_datetime) });
+    const preFoods = (row.foods || []).map(f => ({
+      food_id: f.food_id,
+      food_name: f.food_name,
+      calories_per_serving: f.calories_per_serving,
+      quantity_servings: f.quantity_servings || 1,
+    }));
+    setSelectedFoods(preFoods);
+    setErr("");
+    setModal(row);
+  };
+
+  const save = async () => {
+    if (!form.meal_name || !form.meal_datetime) return setErr("Name and datetime required.");
+    if (selectedFoods.length === 0) return setErr("Select at least one food.");
+    setSaving(true); setErr("");
+    try {
+      const body = {
+        ...form,
+        user_id: isAdmin ? (form.user_id || user.user_id) : user.user_id,
+        foods: selectedFoods.map(f => ({ food_id: f.food_id, quantity_servings: parseFloat(f.quantity_servings) || 1 })),
+      };
+      if (modal === "add") await apiFetch("/meals", "POST", body);
+      else await apiFetch(`/meals/${modal.meal_id}`, "PUT", body);
+      await load(); setModal(null);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  const del = async row => { await apiFetch(`/meals/${row.meal_id}`, "DELETE"); await load(); };
+
+  const columns = [
+    { key: "meal_name", label: "Meal" },
+    { key: "meal_datetime", label: "Date/Time", render: v => v ? new Date(v).toLocaleString() : "—" },
+    { key: "total_calories", label: "Calories", render: v => v != null ? `${v} kcal` : "—" },
+    { key: "foods", label: "Foods", render: (v) => v ? `${v.length} item${v.length !== 1 ? "s" : ""}` : "—" },
+    ...(isAdmin ? [{ key: "email", label: "User" }] : []),
+  ];
+
+  return (
+    <>
+      <CrudTable title="Meals" subtitle={isAdmin ? "All user meals" : "Your logged meals"} columns={columns} rows={rows} onAdd={openAdd} onEdit={openEdit} onDelete={del} loading={loading} searchKeys={["meal_name"]}
+        canEdit={isAdmin ? undefined : row => row.user_id === user.user_id}
+        canDelete={isAdmin ? undefined : row => row.user_id === user.user_id}
+      />
+      {modal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">{modal === "add" ? "Log Meal" : "Edit Meal"}</div>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="modal-subtitle">Select up to 5 foods and set servings for each.</div>
+            {err && <div className="error-msg">✗ {err}</div>}
+            <Field label="Meal name" icon="🍽️">
+              <input type="text" placeholder="e.g. Breakfast" value={form.meal_name || ""} onChange={e => setForm(p => ({...p, meal_name: e.target.value}))} />
+            </Field>
+            <Field label="Date & Time" icon="📅">
+              <input type="datetime-local" value={form.meal_datetime || ""} onChange={e => setForm(p => ({...p, meal_datetime: e.target.value}))} />
+            </Field>
+            <FoodPicker selected={selectedFoods} onChange={setSelectedFoods} allFoods={allFoods} />
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <><span className="spinner"></span>Saving...</> : "Save Meal"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── FOODS PAGE ────────────────────────────────────────────────────────────────
+function FoodsPage({ user }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isAdmin = user.user_type === "admin";
+  // Search state for read-only foods view
+  const [search, setSearch] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    try { setRows(await apiFetch("/foods")); } catch(e) {}
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const openAdd = () => { setForm({ food_name:"", calories_per_serving:"", protein_g:"", carbs_g:"", fat_g:"", fiber_g:"" }); setErr(""); setModal("add"); };
+  const openEdit = row => { setForm({...row}); setErr(""); setModal(row); };
+  const save = async () => {
+    if (!form.food_name) return setErr("Food name is required.");
+    setSaving(true); setErr("");
+    try {
+      if (modal === "add") await apiFetch("/foods", "POST", form);
+      else await apiFetch(`/foods/${modal.food_id}`, "PUT", form);
+      await load(); setModal(null);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+  const del = async row => { await apiFetch(`/foods/${row.food_id}`, "DELETE"); await load(); };
+  const f = k => e => setForm(p => ({...p, [k]: e.target.value}));
+
+  const columns = [
+    { key:"food_name", label:"Food" },
+    { key:"calories_per_serving", label:"Calories", render: v => v != null ? `${v} kcal` : "—" },
+    { key:"protein_g", label:"Protein", render: v => v != null ? `${v}g` : "—" },
+    { key:"carbs_g", label:"Carbs", render: v => v != null ? `${v}g` : "—" },
+    { key:"fat_g", label:"Fat", render: v => v != null ? `${v}g` : "—" },
+  ];
+
+  // Regular users: read-only view, no add/edit/delete
+  if (!isAdmin) {
+    const filtered = search
+      ? rows.filter(r => ["food_name"].some(k => String(r[k] ?? "").toLowerCase().includes(search.toLowerCase())))
+      : rows;
+
+    return (
+      <>
+        <div className="page-header">
+          <div>
+            <div className="page-title">Foods</div>
+            <div className="page-subtitle">Food library — managed by admins</div>
+          </div>
+        </div>
+        <div className="page-content">
+          <div className="table-toolbar">
+            <div className="search-wrap">
+              <span className="search-icon">🔍</span>
+              <input placeholder="Search foods..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+          <div className="table-wrap">
+            {loading ? (
+              <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
+            ) : filtered.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">🥦</span>
+                {search ? "No results found." : "No foods in the library yet."}
+              </div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row, i) => (
+                    <tr key={i}>
+                      {columns.map(c => (
+                        <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <CrudTable title="Foods" subtitle="Food library with nutritional info" columns={columns} rows={rows} onAdd={openAdd} onEdit={openEdit} onDelete={del} loading={loading} searchKeys={["food_name"]} />
+      {modal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">{modal === "add" ? "Add Food" : "Edit Food"}</div>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            {err && <div className="error-msg">✗ {err}</div>}
+            <Field label="Food name" icon="🥦"><input type="text" placeholder="e.g. Chicken Breast" value={form.food_name||""} onChange={f("food_name")} /></Field>
+            <Field label="Calories per serving (kcal)" icon="🔥"><input type="number" placeholder="e.g. 165" value={form.calories_per_serving||""} onChange={f("calories_per_serving")} /></Field>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+              <Field label="Protein (g)" icon="💪"><input type="number" placeholder="0" value={form.protein_g||""} onChange={f("protein_g")} /></Field>
+              <Field label="Carbs (g)" icon="🌾"><input type="number" placeholder="0" value={form.carbs_g||""} onChange={f("carbs_g")} /></Field>
+              <Field label="Fat (g)" icon="🧈"><input type="number" placeholder="0" value={form.fat_g||""} onChange={f("fat_g")} /></Field>
+              <Field label="Fiber (g)" icon="🌿"><input type="number" placeholder="0" value={form.fiber_g||""} onChange={f("fiber_g")} /></Field>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <><span className="spinner"></span>Saving...</> : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── WORKOUTS PAGE ─────────────────────────────────────────────────────────────
+function WorkoutsPage({ user }) {
+  const [rows, setRows] = useState([]);
+  const [allExercises, setAllExercises] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [selectedExercises, setSelectedExercises] = useState([]);
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isAdmin = user.user_type === "admin";
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [workouts, exercises] = await Promise.all([
+        apiFetch(isAdmin ? "/workouts" : `/workouts?user_id=${user.user_id}`),
+        apiFetch("/exercises"),
+      ]);
+      setRows(workouts);
+      setAllExercises(exercises);
+    } catch(e) {}
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => {
+    setForm({ workout_name: "", workout_datetime: new Date().toISOString().slice(0,16), duration_min: "" });
+    setSelectedExercises([]);
+    setErr("");
+    setModal("add");
+  };
+
+  const openEdit = row => {
+    setForm({ ...row, workout_datetime: toDatetimeLocal(row.workout_datetime) });
+    const preEx = (row.exercises || []).map(e => ({
+      exercise_id: e.exercise_id,
+      exercise_name: e.exercise_name,
+      muscle_group: e.muscle_group,
+      sets: e.sets || 3,
+      reps: e.reps || 10,
+      duration_min: e.duration_min || "",
+    }));
+    setSelectedExercises(preEx);
+    setErr("");
+    setModal(row);
+  };
+
+  const save = async () => {
+    if (!form.workout_datetime || !form.duration_min) return setErr("Datetime and duration required.");
+    if (selectedExercises.length === 0) return setErr("Select at least one exercise.");
+    setSaving(true); setErr("");
+    try {
+      const body = {
+        ...form,
+        user_id: user.user_id,
+        exercises: selectedExercises.map(e => ({
+          exercise_id: e.exercise_id,
+          sets: parseInt(e.sets) || null,
+          reps: parseInt(e.reps) || null,
+          duration_min: e.duration_min ? parseFloat(e.duration_min) : null,
+        })),
+      };
+      if (modal === "add") await apiFetch("/workouts", "POST", body);
+      else await apiFetch(`/workouts/${modal.workout_id}`, "PUT", body);
+      await load(); setModal(null);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  const del = async row => { await apiFetch(`/workouts/${row.workout_id}`, "DELETE"); await load(); };
+
+  const columns = [
+    { key:"workout_name", label:"Workout", render: v => v || "—" },
+    { key:"workout_datetime", label:"Date/Time", render: v => v ? new Date(v).toLocaleString() : "—" },
+    { key:"duration_min", label:"Duration", render: v => v != null ? `${v} min` : "—" },
+    { key:"total_calories_burned", label:"Calories Burned", render: v => v != null ? `${v} kcal` : "—" },
+    { key:"exercises", label:"Exercises", render: v => v ? `${v.length} exercise${v.length !== 1 ? "s" : ""}` : "—" },
+    ...(isAdmin ? [{ key:"email", label:"User" }] : []),
+  ];
+
+  return (
+    <>
+      <CrudTable title="Workouts" subtitle={isAdmin ? "All user workouts" : "Your logged workouts"} columns={columns} rows={rows} onAdd={openAdd} onEdit={openEdit} onDelete={del} loading={loading} searchKeys={["workout_name"]}
+        canEdit={isAdmin ? undefined : row => row.user_id === user.user_id}
+        canDelete={isAdmin ? undefined : row => row.user_id === user.user_id}
+      />
+      {modal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">{modal === "add" ? "Log Workout" : "Edit Workout"}</div>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            <div className="modal-subtitle">Name your workout and pick up to 5 exercises.</div>
+            {err && <div className="error-msg">✗ {err}</div>}
+            <Field label="Workout name" icon="🏋️">
+              <input type="text" placeholder="e.g. Push Day, Leg Day..." value={form.workout_name || ""} onChange={e => setForm(p => ({...p, workout_name: e.target.value}))} />
+            </Field>
+            <Field label="Date & Time" icon="📅">
+              <input type="datetime-local" value={form.workout_datetime || ""} onChange={e => setForm(p => ({...p, workout_datetime: e.target.value}))} />
+            </Field>
+            <Field label="Duration (minutes)" icon="⏱️">
+              <input type="number" placeholder="e.g. 45" value={form.duration_min || ""} onChange={e => setForm(p => ({...p, duration_min: e.target.value}))} />
+            </Field>
+            <ExercisePicker selected={selectedExercises} onChange={setSelectedExercises} allExercises={allExercises} />
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <><span className="spinner"></span>Saving...</> : "Save Workout"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── EXERCISES PAGE ────────────────────────────────────────────────────────────
+function ExercisesPage({ user }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isAdmin = user.user_type === "admin";
+  // Search for read-only view
+  const [search, setSearch] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    try { setRows(await apiFetch("/exercises")); } catch(e) {}
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const MUSCLE_GROUPS = ["Chest","Back","Shoulders","Arms","Core","Legs","Glutes","Cardio","Full Body","Other"];
+
+  const openAdd = () => { setForm({ exercise_name:"", muscle_group:"", calories_per_unit:"" }); setErr(""); setModal("add"); };
+  const openEdit = row => { setForm({...row}); setErr(""); setModal(row); };
+  const save = async () => {
+    if (!form.exercise_name) return setErr("Exercise name is required.");
+    setSaving(true); setErr("");
+    try {
+      if (modal === "add") await apiFetch("/exercises", "POST", form);
+      else await apiFetch(`/exercises/${modal.exercise_id}`, "PUT", form);
+      await load(); setModal(null);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+  const del = async row => { await apiFetch(`/exercises/${row.exercise_id}`, "DELETE"); await load(); };
+  const f = k => e => setForm(p => ({...p, [k]: e.target.value}));
+
+  const columns = [
+    { key:"exercise_name", label:"Exercise" },
+    { key:"muscle_group", label:"Muscle Group" },
+    { key:"calories_per_unit", label:"Cal/Unit", render: v => v != null ? `${v}` : "—" },
+  ];
+
+  // Regular users: read-only view, no add/edit/delete
+  if (!isAdmin) {
+    const filtered = search
+      ? rows.filter(r => ["exercise_name", "muscle_group"].some(k => String(r[k] ?? "").toLowerCase().includes(search.toLowerCase())))
+      : rows;
+
+    return (
+      <>
+        <div className="page-header">
+          <div>
+            <div className="page-title">Exercises</div>
+            <div className="page-subtitle">Exercise library with muscle groups</div>
+          </div>
+        </div>
+        <div className="page-content">
+          <div className="table-toolbar">
+            <div className="search-wrap">
+              <span className="search-icon">🔍</span>
+              <input placeholder="Search exercises..." value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+          <div className="table-wrap">
+            {loading ? (
+              <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
+            ) : filtered.length === 0 ? (
+              <div className="empty-state">
+                <span className="empty-icon">🏃</span>
+                {search ? "No results found." : "No exercises in the library yet."}
+              </div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row, i) => (
+                    <tr key={i}>
+                      {columns.map(c => (
+                        <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <CrudTable title="Exercises" subtitle="Exercise library with muscle groups" columns={columns} rows={rows} onAdd={openAdd} onEdit={openEdit} onDelete={del} loading={loading} searchKeys={["exercise_name","muscle_group"]} />
+      {modal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">{modal === "add" ? "Add Exercise" : "Edit Exercise"}</div>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            {err && <div className="error-msg">✗ {err}</div>}
+            <Field label="Exercise name" icon="🏃"><input type="text" placeholder="e.g. Bench Press" value={form.exercise_name||""} onChange={f("exercise_name")} /></Field>
+            <Field label="Muscle group" icon="💪">
+              <select value={form.muscle_group||""} onChange={f("muscle_group")}>
+                <option value="">— select group —</option>
+                {MUSCLE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </Field>
+            <Field label="Calories per unit" icon="🔥"><input type="number" placeholder="e.g. 8" value={form.calories_per_unit||""} onChange={f("calories_per_unit")} /></Field>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <><span className="spinner"></span>Saving...</> : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── PROGRESS PAGE ─────────────────────────────────────────────────────────────
+function ProgressPage({ user }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const isAdmin = user.user_type === "admin";
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setRows(await apiFetch(isAdmin ? "/progress" : `/progress?user_id=${user.user_id}`)); } catch(e) {}
+    setLoading(false);
+  }, [user]);
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => { setForm({ progress_date: toDateLocal(new Date()), body_weight:"", body_fat_percent:"", notes:"" }); setErr(""); setModal("add"); };
+  const openEdit = row => { setForm({...row, progress_date: toDateLocal(row.progress_date)}); setErr(""); setModal(row); };
+  const save = async () => {
+    if (!form.progress_date) return setErr("Date is required.");
+    setSaving(true); setErr("");
+    try {
+      const body = { ...form, user_id: user.user_id };
+      if (modal === "add") await apiFetch("/progress", "POST", body);
+      else await apiFetch(`/progress/${modal.progress_id}`, "PUT", body);
+      await load(); setModal(null);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+  const del = async row => { await apiFetch(`/progress/${row.progress_id}`, "DELETE"); await load(); };
+  const f = k => e => setForm(p => ({...p, [k]: e.target.value}));
+
+  const columns = [
+    { key:"progress_date", label:"Date" },
+    { key:"body_weight", label:"Weight", render: v => v != null ? `${v} lbs` : "—" },
+    { key:"body_fat_percent", label:"Body Fat", render: v => v != null ? `${v}%` : "—" },
+    { key:"notes", label:"Notes", render: v => v ? (v.length > 40 ? v.slice(0,40)+"…" : v) : "—" },
+    ...(isAdmin ? [{ key:"email", label:"User" }] : []),
+  ];
+
+  return (
+    <>
+      <CrudTable title="Progress" subtitle={isAdmin ? "All user progress logs" : "Your progress logs"} columns={columns} rows={rows} onAdd={openAdd} onEdit={openEdit} onDelete={del} loading={loading} searchKeys={[]}
+        canEdit={isAdmin ? undefined : row => row.user_id === user.user_id}
+        canDelete={isAdmin ? undefined : row => row.user_id === user.user_id}
+      />
+      {modal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">{modal === "add" ? "Log Progress" : "Edit Progress"}</div>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            {err && <div className="error-msg">✗ {err}</div>}
+            <Field label="Date" icon="📅"><input type="date" value={form.progress_date||""} onChange={f("progress_date")} /></Field>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 12px"}}>
+              <Field label="Body weight (lbs)" icon="⚖️"><input type="number" step="0.1" placeholder="e.g. 175.5" value={form.body_weight||""} onChange={f("body_weight")} /></Field>
+              <Field label="Body fat (%)" icon="📊"><input type="number" step="0.1" placeholder="e.g. 18.5" value={form.body_fat_percent||""} onChange={f("body_fat_percent")} /></Field>
+            </div>
+            <div className="field">
+              <label>Notes</label>
+              <textarea placeholder="Optional notes..." value={form.notes||""} onChange={f("notes")} style={{padding:"10px 12px",minHeight:70,resize:"vertical"}} />
+            </div>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <><span className="spinner"></span>Saving...</> : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── USERS PAGE (admin only) ───────────────────────────────────────────────────
+function UsersPage({ currentUser }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try { setRows(await apiFetch("/users")); } catch(e) {}
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const openAdd = () => { setForm({ email:"", password:"", user_type:"regular" }); setErr(""); setModal("add"); };
+  const openEdit = row => { setForm({ email: row.email, user_type: row.user_type, user_id: row.user_id }); setErr(""); setModal(row); };
+
+  const save = async () => {
+    if (!form.email) return setErr("Email is required.");
+    if (modal === "add" && !form.password) return setErr("Password is required for new users.");
+    setSaving(true); setErr("");
+    try {
+      if (modal === "add") {
+        await apiFetch("/users/create", "POST", { email: form.email, password: form.password, user_type: form.user_type });
+      } else {
+        await apiFetch(`/users/${modal.user_id}`, "PUT", { email: form.email, user_type: form.user_type });
+      }
+      await load(); setModal(null);
+    } catch(e) { setErr(e.message); }
+    setSaving(false);
+  };
+
+  const del = async row => {
+    if (row.user_id === currentUser.user_id) return;
+    await apiFetch(`/users/${row.user_id}`, "DELETE");
+    await load();
+  };
+  const f = k => e => setForm(p => ({...p, [k]: e.target.value}));
+
+  const columns = [
+    { key:"user_id", label:"ID" },
+    { key:"email", label:"Email" },
+    { key:"user_type", label:"Role", render: v => <span className={`tag ${v==="admin"?"tag-admin":"tag-regular"}`}>{v}</span> },
+    { key:"created_at", label:"Joined" },
+  ];
+
+  return (
+    <>
+      <CrudTable title="Users" subtitle="Manage all user accounts" columns={columns} rows={rows} onAdd={openAdd} onEdit={openEdit} onDelete={del} loading={loading} searchKeys={["email"]}
+        canDelete={row => row.user_id !== currentUser.user_id}
+      />
+      {modal && (
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">{modal === "add" ? "Create User" : "Edit User"}</div>
+              <button className="modal-close" onClick={() => setModal(null)}>✕</button>
+            </div>
+            {modal === "add" && <div className="modal-subtitle">The new user will be able to log in immediately.</div>}
+            {err && <div className="error-msg">✗ {err}</div>}
+            <Field label="Email" icon="✉"><input type="email" placeholder="user@example.com" value={form.email||""} onChange={f("email")} /></Field>
+            {modal === "add" && (
+              <Field label="Password" icon="🔑"><input type="password" placeholder="Min. 6 characters" value={form.password||""} onChange={f("password")} /></Field>
+            )}
+            <Field label="Role" icon="👤">
+              <select value={form.user_type||"regular"} onChange={f("user_type")}>
+                <option value="regular">Regular</option>
+                <option value="admin">Admin</option>
+              </select>
+            </Field>
+            <div className="modal-actions">
+              <button className="btn-cancel" onClick={() => setModal(null)}>Cancel</button>
+              <button className="btn-primary" onClick={save} disabled={saving}>{saving ? <><span className="spinner"></span>Saving...</> : modal === "add" ? "Create User" : "Save Changes"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── WELCOME PAGE ──────────────────────────────────────────────────────────────
+function WelcomePage({ user }) {
+  const [stats, setStats] = useState({ meals: "—", workouts: "—", progress: "—" });
+  const isAdmin = user.user_type === "admin";
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [meals, workouts, progress] = await Promise.all([
+          apiFetch(isAdmin ? "/meals" : `/meals?user_id=${user.user_id}`),
+          apiFetch(isAdmin ? "/workouts" : `/workouts?user_id=${user.user_id}`),
+          apiFetch(isAdmin ? "/progress" : `/progress?user_id=${user.user_id}`),
+        ]);
+        setStats({ meals: meals.length, workouts: workouts.length, progress: progress.length });
+      } catch(e) {}
+    };
+    fetchStats();
+  }, [user]);
+
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Welcome back, <span style={{color:"var(--accent)"}}>{user.email.split("@")[0]}</span> 👋</div>
+          <div className="page-subtitle">{isAdmin ? "You have admin access — manage all users and data." : "Here's a snapshot of your fitness data."}</div>
+        </div>
+      </div>
+      <div className="page-content">
+        <div className="welcome-grid">
+          <div className="stat-card">
+            <div className="stat-label">🍽️ {isAdmin ? "Total" : "Your"} Meals</div>
+            <div className="stat-value">{stats.meals}</div>
+            <div className="stat-sub">logged meals</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">💪 {isAdmin ? "Total" : "Your"} Workouts</div>
+            <div className="stat-value">{stats.workouts}</div>
+            <div className="stat-sub">logged sessions</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">📈 {isAdmin ? "Total" : "Your"} Progress</div>
+            <div className="stat-value">{stats.progress}</div>
+            <div className="stat-sub">check-ins</div>
+          </div>
+        </div>
+        <div style={{color:"var(--muted)",fontSize:12,marginTop:8}}>
+          Use the sidebar to navigate to any section and add, edit, or delete records.
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function Dashboard({ user, onLogout }) {
+  const [page, setPage] = useState("home");
+  const [showChangePw, setShowChangePw] = useState(false);
+  const isAdmin = user.user_type === "admin";
+
+  const logout = async () => { await apiFetch("/auth/logout", "POST"); onLogout(); };
+
+  // Regular users: show Exercises in nav (read-only for regular users; only admin can add/edit/delete)
+  const regularNav = [
+    { id:"meals", icon:"🍽️", label:"Meals" },
+    { id:"foods", icon:"🥦", label:"Foods" },
+    { id:"exercises", icon:"🏃", label:"Exercises" },
+    { id:"workouts", icon:"💪", label:"Workouts" },
+    { id:"progress", icon:"📈", label:"Progress" },
+  ];
+
+  // Admins: Users + all sections including Exercises
+  const adminNav = [
+    { id:"users", icon:"👥", label:"Users" },
+    { id:"meals", icon:"🍽️", label:"Meals" },
+    { id:"foods", icon:"🥦", label:"Foods" },
+    { id:"workouts", icon:"💪", label:"Workouts" },
+    { id:"exercises", icon:"🏃", label:"Exercises" },
+    { id:"progress", icon:"📈", label:"Progress" },
+  ];
+
+  const nav = isAdmin ? adminNav : regularNav;
+
+  const renderPage = () => {
+    if (page === "home") return <WelcomePage user={user} />;
+    if (page === "meals") return <MealsPage user={user} />;
+    if (page === "foods") return <FoodsPage user={user} />;
+    if (page === "workouts") return <WorkoutsPage user={user} />;
+    // Show exercises page to all users (read-only for regular users)
+    if (page === "exercises") return <ExercisesPage user={user} />;
+    if (page === "progress") return <ProgressPage user={user} />;
+    if (page === "users" && isAdmin) return <UsersPage currentUser={user} />;
+    return null;
+  };
+
+  return (
+    <div className="dashboard">
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
+      <nav className="sidebar">
+        <div className="sidebar-logo"><div className="logo-dot"></div>FIT<span>TRACK</span></div>
+        <div className="sidebar-user">
+          <strong>{user.email}</strong>
+          <span className={`sidebar-badge ${isAdmin ? "badge-purple" : "badge-green"}`}>{user.user_type}</span>
+        </div>
+        <div className="nav-section">Navigation</div>
+        <div className={`nav-item ${page === "home" ? "active" : ""}`} onClick={() => setPage("home")}>
+          <span className="nav-icon">🏠</span> Home
+        </div>
+        {isAdmin && <div className="nav-section">Admin</div>}
+        {nav.map(n => (
+          <div key={n.id} className={`nav-item ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
+            <span className="nav-icon">{n.icon}</span> {n.label}
+          </div>
+        ))}
+        <div className="sidebar-bottom">
+          <button className="btn-sidebar" onClick={() => setShowChangePw(true)}>⚙ Change password</button>
+          <button className="btn-danger-sm" onClick={logout}>↩ Sign Out</button>
+        </div>
+      </nav>
+      <div className="main-area">
+        {renderPage()}
+      </div>
+    </div>
+  );
+}
+
+// ── AUTH CARD ─────────────────────────────────────────────────────────────────
 function AuthCard({ onLogin }) {
   const [tab, setTab] = useState("login");
-  const [form, setForm] = useState({ email: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ email: "", password: "", confirm: "", adminCode: "" });
+  const [showAdminField, setShowAdminField] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const emailRef = useRef();
 
   useEffect(() => { emailRef.current?.focus(); }, [tab]);
-
-  const f = (k) => (e) => { setForm(p => ({...p, [k]: e.target.value})); setError(""); };
+  const f = k => e => { setForm(p => ({...p, [k]: e.target.value})); setError(""); };
 
   const submit = async () => {
     setError("");
-    const { email, password, confirm } = form;
+    const { email, password, confirm, adminCode } = form;
     if (!email || !password) return setError("Please fill in all fields.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Enter a valid email address.");
     if (password.length < 6) return setError("Password must be at least 6 characters.");
     if (tab === "signup" && password !== confirm) return setError("Passwords do not match.");
-
+    if (tab === "signup" && showAdminField && adminCode && adminCode !== ADMIN_CODE) {
+      return setError("Invalid admin code.");
+    }
     setLoading(true);
     try {
-      const user = await apiFetch(tab === "login" ? "/auth/login" : "/auth/register", "POST", { email, password });
+      const body = { email, password };
+      if (tab === "signup" && showAdminField && adminCode === ADMIN_CODE) {
+        body.admin_code = adminCode;
+      }
+      const user = await apiFetch(tab === "login" ? "/auth/login" : "/auth/register", "POST", body);
       onLogin(user);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
   const strength = pwStrength(form.password);
@@ -248,40 +1385,40 @@ function AuthCard({ onLogin }) {
     <div className="card">
       <div className="logo"><div className="logo-dot"></div>FIT<span>TRACK</span></div>
       <div className="tabs">
-        <button className={`tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setError(""); }}>Login</button>
+        <button className={`tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setError(""); setShowAdminField(false); }}>Login</button>
         <button className={`tab ${tab === "signup" ? "active" : ""}`} onClick={() => { setTab("signup"); setError(""); }}>Sign Up</button>
       </div>
       <div className="form-title">{tab === "login" ? "Welcome back" : "Create account"}</div>
       <div className="form-subtitle">{tab === "login" ? "Sign in to access your dashboard" : "Start tracking your fitness journey"}</div>
       {error && <div className="error-msg"><span>✗</span> {error}</div>}
-      <div className="field">
-        <label>Email</label>
-        <div className="input-wrap">
-          <span className="input-icon">✉</span>
-          <input ref={emailRef} type="email" placeholder="you@example.com" value={form.email} onChange={f("email")} onKeyDown={e => e.key === "Enter" && submit()} />
+      <Field label="Email" icon="✉">
+        <input ref={emailRef} type="email" placeholder="you@example.com" value={form.email} onChange={f("email")} onKeyDown={e => e.key === "Enter" && submit()} />
+      </Field>
+      <Field label="Password" icon="🔑">
+        <input type="password" placeholder={tab === "signup" ? "Min. 6 characters" : "••••••••"} value={form.password} onChange={f("password")} onKeyDown={e => e.key === "Enter" && submit()} />
+      </Field>
+      {tab === "signup" && form.password && (
+        <div style={{ marginTop: -8, marginBottom: 14 }}>
+          <div className="pw-strength"><div className="pw-strength-fill" style={{ width: `${strength.pct}%`, background: strength.color }}></div></div>
+          <div style={{ fontSize: 10, color: strength.color, marginTop: 3 }}>{strength.label}</div>
         </div>
-      </div>
-      <div className="field">
-        <label>Password</label>
-        <div className="input-wrap">
-          <span className="input-icon">🔑</span>
-          <input type="password" placeholder={tab === "signup" ? "Min. 6 characters" : "••••••••"} value={form.password} onChange={f("password")} onKeyDown={e => e.key === "Enter" && submit()} />
-        </div>
-        {tab === "signup" && form.password && (
-          <div>
-            <div className="pw-strength"><div className="pw-strength-fill" style={{ width: `${strength.pct}%`, background: strength.color }}></div></div>
-            <div style={{ fontSize: 10, color: strength.color, marginTop: 3 }}>{strength.label}</div>
-          </div>
-        )}
-      </div>
+      )}
       {tab === "signup" && (
-        <div className="field">
-          <label>Confirm Password</label>
-          <div className="input-wrap">
-            <span className="input-icon">🔒</span>
+        <>
+          <Field label="Confirm Password" icon="🔒">
             <input type="password" placeholder="Re-enter password" value={form.confirm} onChange={f("confirm")} onKeyDown={e => e.key === "Enter" && submit()} />
+          </Field>
+          <div className="admin-toggle">
+            <button className="admin-toggle-btn" onClick={() => setShowAdminField(v => !v)}>
+              {showAdminField ? "▲ Hide admin access" : "▼ Have an admin code?"}
+            </button>
           </div>
-        </div>
+          {showAdminField && (
+            <Field label="Admin code" icon="🛡️">
+              <input type="password" placeholder="Enter admin code" value={form.adminCode} onChange={f("adminCode")} onKeyDown={e => e.key === "Enter" && submit()} />
+            </Field>
+          )}
+        </>
       )}
       <button className="btn-submit" onClick={submit} disabled={loading}>
         {loading ? <><span className="spinner"></span>Please wait...</> : (tab === "login" ? "Sign In" : "Create Account")}
@@ -295,61 +1432,13 @@ function AuthCard({ onLogin }) {
   );
 }
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-const NAV = [
-  { id:"users", icon:"👤", label:"Users" }, { id:"meals", icon:"🍽️", label:"Meals" },
-  { id:"foods", icon:"🥦", label:"Foods" }, { id:"workouts", icon:"💪", label:"Workouts" },
-  { id:"exercises", icon:"🏃", label:"Exercises" }, { id:"progress", icon:"📈", label:"Progress" },
-];
-
-function Dashboard({ user, onLogout }) {
-  const [page, setPage] = useState("");
-  const [showChangePw, setShowChangePw] = useState(false);
-
-  const logout = async () => { await apiFetch("/auth/logout", "POST"); onLogout(); };
-
-  return (
-    <div className="dashboard">
-      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
-      <nav className="sidebar">
-        <div className="sidebar-logo"><div className="logo-dot"></div>FIT<span>TRACK</span></div>
-        <div className="sidebar-user">
-          <strong>{user.email}</strong>
-          <span className={`sidebar-badge ${user.user_type === "admin" ? "badge-purple" : "badge-green"}`}>{user.user_type}</span>
-        </div>
-        {NAV.map(n => (
-          <div key={n.id} className={`nav-item ${page === n.id ? "active" : ""}`} onClick={() => setPage(n.id)}>
-            <span className="nav-icon">{n.icon}</span> {n.label}
-          </div>
-        ))}
-        <div className="sidebar-logout">
-          <button className="btn-settings" onClick={() => setShowChangePw(true)}>⚙ Change password</button>
-          <button className="btn-logout" onClick={logout}>↩ Sign Out</button>
-        </div>
-      </nav>
-      <div className="main-area">
-        <div className="big-icon">🏋️</div>
-        <p style={{ fontFamily:"'Syne',sans-serif", fontSize:18, fontWeight:700, color:"var(--text)" }}>
-          Welcome, <span>{user.email.split("@")[0]}</span>
-        </p>
-        <p>Your dashboard is ready.</p>
-      </div>
-    </div>
-  );
-}
-
-// ── App ───────────────────────────────────────────────────────────────────────
+// ── APP ───────────────────────────────────────────────────────────────────────
 function App() {
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
-
   useEffect(() => {
-    apiFetch("/auth/me")
-      .then(u => setUser(u))
-      .catch(() => {})
-      .finally(() => setChecking(false));
+    apiFetch("/auth/me").then(u => setUser(u)).catch(() => {}).finally(() => setChecking(false));
   }, []);
-
   if (checking) return null;
   return user
     ? <Dashboard user={user} onLogout={() => setUser(null)} />
