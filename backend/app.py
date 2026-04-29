@@ -5,18 +5,9 @@ import bcrypt
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-a-random-secret"
-app.config.update(
-    SESSION_COOKIE_SAMESITE="None",
-    SESSION_COOKIE_SECURE=False,   # False for HTTP localhost
-    SESSION_COOKIE_HTTPONLY=True,
-)
+app.config.update(SESSION_COOKIE_SAMESITE="Lax")
 
-CORS(app, 
-     supports_credentials=True, 
-     origins=["http://127.0.0.1:5500"],
-     allow_headers=["Content-Type"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-)
+CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5500"])
 
 ADMIN_CODE = "fittrack-admin-2024"
 
@@ -417,9 +408,10 @@ def create_workout():
     conn = get_db()
     cur = conn.cursor(dictionary=True)
     try:
+        # FIX: include workout_name in the INSERT
         cur.execute(
             "INSERT INTO WORKOUT (user_id, workout_datetime, workout_name, duration_min, total_calories_burned) VALUES (%s,%s,%s,%s,%s)",
-            (user_id, d["workout_datetime"], d.get("workout_name", ""), d["duration_min"], round(total_cal, 1))
+            (user_id, d["workout_datetime"], d.get("workout_name"), d["duration_min"], round(total_cal, 1))
         )
         workout_id = cur.lastrowid
         for item in exercises:
@@ -460,9 +452,10 @@ def update_workout(wid):
     conn = get_db()
     cur = conn.cursor(dictionary=True)
     try:
+        # FIX: include workout_name in the UPDATE
         cur.execute(
             "UPDATE WORKOUT SET workout_datetime=%s, workout_name=%s, duration_min=%s, total_calories_burned=%s WHERE workout_id=%s",
-            (d["workout_datetime"], d.get("workout_name", ""), d["duration_min"], round(total_cal, 1), wid)
+            (d["workout_datetime"], d.get("workout_name"), d["duration_min"], round(total_cal, 1), wid)
         )
         cur.execute("DELETE FROM WORKOUT_EXERCISE WHERE workout_id=%s", (wid,))
         for item in exercises:
@@ -511,13 +504,9 @@ def get_progress():
 def create_progress():
     d = request.json
     user_id = session["user_id"] if session.get("user_type") != "admin" else d.get("user_id", session["user_id"])
-    raw_date = (d.get("progress_date") or "")[:10]
-    if not raw_date:
-        return jsonify({"error": "progress_date is required"}), 400
     last_id = query(
         "INSERT INTO PROGRESS (user_id, progress_date, body_weight, body_fat_percent, notes) VALUES (%s,%s,%s,%s,%s)",
-        (user_id, raw_date, d.get("body_weight") or None, d.get("body_fat_percent") or None, d.get("notes")),
-        commit=True
+        (user_id, d["progress_date"], d.get("body_weight"), d.get("body_fat_percent"), d.get("notes")), commit=True
     )
     return jsonify({"progress_id": last_id}), 201
 
@@ -529,15 +518,8 @@ def update_progress(pid):
         p = query("SELECT user_id FROM PROGRESS WHERE progress_id=%s", (pid,), fetchone=True)
         if not p or p["user_id"] != session["user_id"]:
             return jsonify({"error": "Forbidden"}), 403
-    # Normalize date — strip any time component if accidentally included
-    raw_date = (d.get("progress_date") or "")[:10]
-    if not raw_date:
-        return jsonify({"error": "progress_date is required"}), 400
-    query(
-        "UPDATE PROGRESS SET progress_date=%s, body_weight=%s, body_fat_percent=%s, notes=%s WHERE progress_id=%s",
-        (raw_date, d.get("body_weight") or None, d.get("body_fat_percent") or None, d.get("notes"), pid),
-        commit=True
-    )
+    query("UPDATE PROGRESS SET progress_date=%s, body_weight=%s, body_fat_percent=%s, notes=%s WHERE progress_id=%s",
+          (d["progress_date"], d.get("body_weight"), d.get("body_fat_percent"), d.get("notes"), pid), commit=True)
     return jsonify({"success": True})
 
 @app.route("/api/progress/<int:pid>", methods=["DELETE"])
@@ -552,47 +534,20 @@ def delete_progress(pid):
 
 
 # ── REPORTS ───────────────────────────────────────────────────────────────────
-@app.route("/api/reports/meal-progress", methods=["GET"])
+@app.route("/api/reports/summary", methods=["GET"])
 @login_required
-def report_meal_progress():
-    user_id = session["user_id"]
-    is_admin = session.get("user_type") == "admin"
-    base = """
-        SELECT
-            u.user_id,
-            u.email,
-            p.body_weight,
-            p.progress_date,
-            m.meal_name,
-            ROUND(AVG(m.total_calories), 1) AS avg_calories_for_meal_type,
-            COUNT(m.meal_id)                AS times_eaten
-        FROM USER u
-        JOIN PROGRESS p ON p.user_id = u.user_id
-        JOIN MEAL     m ON m.user_id = u.user_id
-        {where}
-        GROUP BY u.user_id, u.email, p.body_weight, p.progress_date, m.meal_name
-        ORDER BY p.progress_date DESC, m.meal_name
+def reports_summary():
     """
-    if is_admin:
-        rows = query(base.format(where=""))
-    else:
-        rows = query(base.format(where="WHERE u.user_id = %s"), (user_id,))
-    return jsonify(rows)
-
-
-@app.route("/api/reports/activity-summary", methods=["GET"])
-@login_required
-def report_activity_summary():
-    user_id = session["user_id"]
-    is_admin = session.get("user_type") == "admin"
-    base = """
+    Returns per-user aggregate stats. Admins see all users; regular users see only themselves.
+    """
+    sql = """
         SELECT
             u.user_id,
             u.email,
-            COUNT(DISTINCT m.meal_id)             AS total_meals,
-            COALESCE(SUM(m.total_calories), 0)    AS total_calories_consumed,
-            COUNT(DISTINCT w.workout_id)           AS total_workouts,
-            COALESCE(SUM(w.duration_min), 0)       AS total_workout_minutes
+            COUNT(DISTINCT m.meal_id)                   AS total_meals,
+            COALESCE(SUM(m.total_calories), 0)          AS total_calories_consumed,
+            COUNT(DISTINCT w.workout_id)                AS total_workouts,
+            COALESCE(SUM(w.duration_min), 0)            AS total_workout_minutes
         FROM USER u
         LEFT JOIN MEAL    m ON m.user_id = u.user_id
         LEFT JOIN WORKOUT w ON w.user_id = u.user_id
@@ -600,10 +555,16 @@ def report_activity_summary():
         GROUP BY u.user_id, u.email
         ORDER BY total_calories_consumed DESC
     """
-    if is_admin:
-        rows = query(base.format(where=""))
+    if session.get("user_type") == "admin":
+        rows = query(sql.format(where=""), ())
     else:
-        rows = query(base.format(where="WHERE u.user_id = %s"), (user_id,))
+        rows = query(sql.format(where="WHERE u.user_id = %s"), (session["user_id"],))
+
+    # Convert Decimal / other non-serialisable types to plain Python numbers
+    for row in rows:
+        row["total_calories_consumed"] = float(row["total_calories_consumed"])
+        row["total_workout_minutes"]   = float(row["total_workout_minutes"])
+
     return jsonify(rows)
 
 

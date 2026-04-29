@@ -158,10 +158,19 @@
   .slot-count{font-size:10px;color:var(--muted);margin-top:4px;}
   .slot-count span{color:var(--accent);}
   /* REPORTS */
-  .report-section{margin-bottom:32px;}
-  .report-section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
-  .report-section-sub{font-size:11px;color:var(--muted);margin-bottom:14px;}
-  .report-no-data{padding:32px;text-align:center;color:var(--muted);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:12px;}
+  .report-summary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:28px;}
+  .report-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:4px;}
+  .report-stat-label{font-size:10px;color:var(--muted);letter-spacing:0.8px;text-transform:uppercase;}
+  .report-stat-value{font-family:'Syne',sans-serif;font-weight:700;font-size:24px;color:var(--accent);}
+  .report-stat-sub{font-size:10px;color:var(--muted);}
+  .report-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .report-bar-label{font-size:11px;color:var(--text);width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;}
+  .report-bar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .report-bar-fill{height:100%;border-radius:3px;background:var(--accent);transition:width 0.6s ease;}
+  .report-bar-fill-2{background:var(--accent2);}
+  .report-bar-val{font-size:10px;color:var(--muted);width:70px;text-align:right;flex-shrink:0;}
+  .report-section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .report-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
 </style>
 </head>
 <body>
@@ -585,141 +594,6 @@ function ExercisePicker({ selected, onChange, allExercises }) {
   );
 }
 
-// ── REPORTS PAGE ──────────────────────────────────────────────────────────────
-function ReportsPage({ user }) {
-  const [activityData, setActivityData] = useState([]);
-  const [mealProgressData, setMealProgressData] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [activity, mealProgress] = await Promise.all([
-          apiFetch("/reports/activity-summary"),
-          apiFetch("/reports/meal-progress"),
-        ]);
-        setActivityData(activity);
-        setMealProgressData(mealProgress);
-      } catch(e) {}
-      setLoading(false);
-    };
-    load();
-  }, []);
-
-  const isAdmin = user.user_type === "admin";
-
-  return (
-    <>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Reports</div>
-          <div className="page-subtitle">{isAdmin ? "Analytics across all users" : "Your personal fitness analytics"}</div>
-        </div>
-      </div>
-      <div className="page-content">
-        {loading ? (
-          <div className="empty-state"><span className="spinner-sm"></span> Loading reports...</div>
-        ) : (
-          <>
-            {/* ── ACTIVITY SUMMARY ── */}
-            <div className="report-section">
-              <div className="report-section-title">📊 Activity Summary</div>
-              <div className="report-section-sub">
-                Total meals logged, calories consumed, workouts completed, and time spent training
-                {isAdmin ? " — all users" : ""}.
-              </div>
-              {activityData.length === 0 ? (
-                <div className="report-no-data">No activity data yet. Start logging meals and workouts!</div>
-              ) : (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        {isAdmin && <th>User</th>}
-                        <th>Total Meals</th>
-                        <th>Calories Consumed</th>
-                        <th>Total Workouts</th>
-                        <th>Workout Minutes</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activityData.map((row, i) => (
-                        <tr key={i}>
-                          {isAdmin && <td style={{ color: "var(--accent)", fontSize: 11 }}>{row.email}</td>}
-                          <td>{row.total_meals}</td>
-                          <td>
-                            <span style={{ color: "var(--warn)", fontWeight: 500 }}>
-                              {Number(row.total_calories_consumed).toLocaleString()} kcal
-                            </span>
-                          </td>
-                          <td>{row.total_workouts}</td>
-                          <td>{row.total_workout_minutes} min</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            {/* ── MEAL vs PROGRESS ── */}
-            <div className="report-section">
-              <div className="report-section-title">⚖️ Meal Patterns &amp; Body Weight</div>
-              <div className="report-section-sub">
-                How often each meal type was logged and average calories per entry, cross-referenced with body weight check-ins
-                {isAdmin ? " — all users" : ""}.
-              </div>
-              {mealProgressData.length === 0 ? (
-                <div className="report-no-data">
-                  No data yet. This report requires at least one progress check-in and one logged meal.
-                </div>
-              ) : (
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        {isAdmin && <th>User</th>}
-                        <th>Check-in Date</th>
-                        <th>Body Weight</th>
-                        <th>Meal Name</th>
-                        <th>Avg Calories</th>
-                        <th>Times Logged</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mealProgressData.map((row, i) => (
-                        <tr key={i}>
-                          {isAdmin && <td style={{ color: "var(--accent)", fontSize: 11 }}>{row.email}</td>}
-                          <td>{row.progress_date ? new Date(row.progress_date).toLocaleDateString() : "—"}</td>
-                          <td>
-                            {row.body_weight != null
-                              ? <span style={{ color: "var(--accent2)", fontWeight: 500 }}>{row.body_weight} lbs</span>
-                              : "—"}
-                          </td>
-                          <td>{row.meal_name}</td>
-                          <td>
-                            <span style={{ color: "var(--warn)" }}>
-                              {row.avg_calories_for_meal_type != null ? `${row.avg_calories_for_meal_type} kcal` : "—"}
-                            </span>
-                          </td>
-                          <td>
-                            <span style={{ color: "var(--text)" }}>{row.times_eaten}×</span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </>
-  );
-}
-
 // ── MEALS PAGE ────────────────────────────────────────────────────────────────
 function MealsPage({ user }) {
   const [rows, setRows] = useState([]);
@@ -886,9 +760,10 @@ function FoodsPage({ user }) {
           </div>
           <div className="table-wrap">
             {loading ? <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
-              : filtered.length === 0 ? <div className="empty-state"><span className="empty-icon">🥦</span>{search ? "No results found." : "No foods in the library yet."}</div>
-              : <table><thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
-                <tbody>{filtered.map((row, i) => <tr key={i}>{columns.map(c => <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>)}</tr>)}</tbody></table>}
+            : filtered.length === 0 ? <div className="empty-state"><span className="empty-icon">🥦</span>{search ? "No results found." : "No foods in the library yet."}</div>
+            : <table><thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
+              <tbody>{filtered.map((row, i) => <tr key={i}>{columns.map(c => <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>)}</tr>)}</tbody>
+              </table>}
           </div>
         </div>
       </>
@@ -999,11 +874,11 @@ function WorkoutsPage({ user }) {
   const del = async row => { await apiFetch(`/workouts/${row.workout_id}`, "DELETE"); await load(); };
 
   const columns = [
-    // ── FIX: workout_name now displayed as first column ──
-    { key:"workout_name", label:"Name", render: v => v || <span style={{color:"var(--muted)"}}>—</span> },
+    // FIX: workout_name now renders properly; falls back to "—" only if truly blank
+    { key:"workout_name", label:"Workout", render: v => v || "—" },
     { key:"workout_datetime", label:"Date/Time", render: v => v ? new Date(v).toLocaleString() : "—" },
     { key:"duration_min", label:"Duration", render: v => v != null ? `${v} min` : "—" },
-    { key:"total_calories_burned", label:"Cal Burned", render: v => v != null ? `${v} kcal` : "—" },
+    { key:"total_calories_burned", label:"Calories Burned", render: v => v != null ? `${v} kcal` : "—" },
     { key:"exercises", label:"Exercises", render: v => v ? `${v.length} exercise${v.length !== 1 ? "s" : ""}` : "—" },
     ...(isAdmin ? [{ key:"email", label:"User" }] : []),
   ];
@@ -1087,7 +962,7 @@ function ExercisesPage({ user }) {
 
   if (!isAdmin) {
     const filtered = search
-      ? rows.filter(r => ["exercise_name","muscle_group"].some(k => String(r[k]??'').toLowerCase().includes(search.toLowerCase())))
+      ? rows.filter(r => ["exercise_name","muscle_group"].some(k => String(r[k] ?? "").toLowerCase().includes(search.toLowerCase())))
       : rows;
     return (
       <>
@@ -1103,9 +978,10 @@ function ExercisesPage({ user }) {
           </div>
           <div className="table-wrap">
             {loading ? <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
-              : filtered.length === 0 ? <div className="empty-state"><span className="empty-icon">🏃</span>{search ? "No results found." : "No exercises in the library yet."}</div>
-              : <table><thead><tr>{columns.map(c=><th key={c.key}>{c.label}</th>)}</tr></thead>
-                <tbody>{filtered.map((row,i)=><tr key={i}>{columns.map(c=><td key={c.key}>{c.render?c.render(row[c.key],row):(row[c.key]??"—")}</td>)}</tr>)}</tbody></table>}
+            : filtered.length === 0 ? <div className="empty-state"><span className="empty-icon">🏃</span>{search ? "No results found." : "No exercises yet."}</div>
+            : <table><thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
+              <tbody>{filtered.map((row, i) => <tr key={i}>{columns.map(c => <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>)}</tr>)}</tbody>
+              </table>}
           </div>
         </div>
       </>
@@ -1300,6 +1176,163 @@ function UsersPage({ currentUser }) {
   );
 }
 
+// ── REPORTS PAGE ──────────────────────────────────────────────────────────────
+function ReportsPage({ user }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const isAdmin = user.user_type === "admin";
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try { setRows(await apiFetch("/reports/summary")); } catch(e) {}
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  // Totals for the summary cards (admin sees all, user sees their own single row)
+  const totalMeals     = rows.reduce((s, r) => s + (r.total_meals || 0), 0);
+  const totalCal       = rows.reduce((s, r) => s + (r.total_calories_consumed || 0), 0);
+  const totalWorkouts  = rows.reduce((s, r) => s + (r.total_workouts || 0), 0);
+  const totalMins      = rows.reduce((s, r) => s + (r.total_workout_minutes || 0), 0);
+
+  // Derived maxes for bar scaling
+  const maxCal  = Math.max(...rows.map(r => r.total_calories_consumed || 0), 1);
+  const maxMins = Math.max(...rows.map(r => r.total_workout_minutes || 0), 1);
+
+  const fmt = n => Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Reports</div>
+          <div className="page-subtitle">
+            {isAdmin ? "Aggregated stats across all users" : "Your personal fitness summary"}
+          </div>
+        </div>
+      </div>
+      <div className="page-content">
+        {loading ? (
+          <div style={{ padding: 48, textAlign: "center", color: "var(--muted)" }}>
+            <span className="spinner-sm"></span> Loading report...
+          </div>
+        ) : (
+          <>
+            {/* ── Summary stat cards ── */}
+            <div className="report-summary-grid">
+              <div className="report-stat">
+                <div className="report-stat-label">🍽️ {isAdmin ? "Total" : "Your"} Meals</div>
+                <div className="report-stat-value">{fmt(totalMeals)}</div>
+                <div className="report-stat-sub">logged meals</div>
+              </div>
+              <div className="report-stat">
+                <div className="report-stat-label">🔥 Calories consumed</div>
+                <div className="report-stat-value">{fmt(totalCal)}</div>
+                <div className="report-stat-sub">kcal total</div>
+              </div>
+              <div className="report-stat">
+                <div className="report-stat-label">💪 {isAdmin ? "Total" : "Your"} Workouts</div>
+                <div className="report-stat-value">{fmt(totalWorkouts)}</div>
+                <div className="report-stat-sub">logged sessions</div>
+              </div>
+              <div className="report-stat">
+                <div className="report-stat-label">⏱️ Workout time</div>
+                <div className="report-stat-value">{fmt(totalMins)}</div>
+                <div className="report-stat-sub">total minutes</div>
+              </div>
+            </div>
+
+            {/* ── Per-user breakdown (only meaningful for admins; single row for regular users) ── */}
+            {rows.length > 0 && (
+              <>
+                {/* Calories bar chart */}
+                <div className="report-card">
+                  <div className="report-section-title">
+                    {isAdmin ? "Calories consumed — by user" : "Your calorie breakdown"}
+                  </div>
+                  {rows.map(r => (
+                    <div className="report-bar-row" key={r.user_id}>
+                      <div className="report-bar-label" title={r.email}>
+                        {isAdmin ? r.email : "You"}
+                      </div>
+                      <div className="report-bar-track">
+                        <div
+                          className="report-bar-fill"
+                          style={{ width: `${((r.total_calories_consumed || 0) / maxCal) * 100}%` }}
+                        />
+                      </div>
+                      <div className="report-bar-val">{fmt(r.total_calories_consumed)} kcal</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Workout minutes bar chart */}
+                <div className="report-card">
+                  <div className="report-section-title">
+                    {isAdmin ? "Workout minutes — by user" : "Your workout time"}
+                  </div>
+                  {rows.map(r => (
+                    <div className="report-bar-row" key={r.user_id}>
+                      <div className="report-bar-label" title={r.email}>
+                        {isAdmin ? r.email : "You"}
+                      </div>
+                      <div className="report-bar-track">
+                        <div
+                          className="report-bar-fill report-bar-fill-2"
+                          style={{ width: `${((r.total_workout_minutes || 0) / maxMins) * 100}%` }}
+                        />
+                      </div>
+                      <div className="report-bar-val">{fmt(r.total_workout_minutes)} min</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Full data table */}
+                <div className="report-card">
+                  <div className="report-section-title">Full breakdown</div>
+                  <div className="table-wrap" style={{ border: "none", borderRadius: 0 }}>
+                    <table>
+                      <thead>
+                        <tr>
+                          {isAdmin && <th>User</th>}
+                          <th>Meals</th>
+                          <th>Calories consumed</th>
+                          <th>Workouts</th>
+                          <th>Workout minutes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(r => (
+                          <tr key={r.user_id}>
+                            {isAdmin && <td>{r.email}</td>}
+                            <td>{r.total_meals}</td>
+                            <td>{fmt(r.total_calories_consumed)} kcal</td>
+                            <td>{r.total_workouts}</td>
+                            <td>{fmt(r.total_workout_minutes)} min</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {rows.length === 0 && (
+              <div className="empty-state">
+                <span className="empty-icon">📊</span>
+                No data to report yet.
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ── WELCOME PAGE ──────────────────────────────────────────────────────────────
 function WelcomePage({ user }) {
   const [stats, setStats] = useState({ meals: "—", workouts: "—", progress: "—" });
@@ -1362,34 +1395,34 @@ function Dashboard({ user, onLogout }) {
   const logout = async () => { await apiFetch("/auth/logout", "POST"); onLogout(); };
 
   const regularNav = [
-    { id:"meals", icon:"🍽️", label:"Meals" },
-    { id:"foods", icon:"🥦", label:"Foods" },
+    { id:"meals",     icon:"🍽️", label:"Meals" },
+    { id:"foods",     icon:"🥦", label:"Foods" },
     { id:"exercises", icon:"🏃", label:"Exercises" },
-    { id:"workouts", icon:"💪", label:"Workouts" },
-    { id:"progress", icon:"📈", label:"Progress" },
-    { id:"reports", icon:"📊", label:"Reports" },
+    { id:"workouts",  icon:"💪", label:"Workouts" },
+    { id:"progress",  icon:"📈", label:"Progress" },
+    { id:"reports",   icon:"📊", label:"Reports" },
   ];
 
   const adminNav = [
-    { id:"users", icon:"👥", label:"Users" },
-    { id:"meals", icon:"🍽️", label:"Meals" },
-    { id:"foods", icon:"🥦", label:"Foods" },
-    { id:"workouts", icon:"💪", label:"Workouts" },
+    { id:"users",     icon:"👥", label:"Users" },
+    { id:"meals",     icon:"🍽️", label:"Meals" },
+    { id:"foods",     icon:"🥦", label:"Foods" },
+    { id:"workouts",  icon:"💪", label:"Workouts" },
     { id:"exercises", icon:"🏃", label:"Exercises" },
-    { id:"progress", icon:"📈", label:"Progress" },
-    { id:"reports", icon:"📊", label:"Reports" },
+    { id:"progress",  icon:"📈", label:"Progress" },
+    { id:"reports",   icon:"📊", label:"Reports" },
   ];
 
   const nav = isAdmin ? adminNav : regularNav;
 
   const renderPage = () => {
-    if (page === "home") return <WelcomePage user={user} />;
-    if (page === "meals") return <MealsPage user={user} />;
-    if (page === "foods") return <FoodsPage user={user} />;
-    if (page === "workouts") return <WorkoutsPage user={user} />;
+    if (page === "home")      return <WelcomePage user={user} />;
+    if (page === "meals")     return <MealsPage user={user} />;
+    if (page === "foods")     return <FoodsPage user={user} />;
+    if (page === "workouts")  return <WorkoutsPage user={user} />;
     if (page === "exercises") return <ExercisesPage user={user} />;
-    if (page === "progress") return <ProgressPage user={user} />;
-    if (page === "reports") return <ReportsPage user={user} />;
+    if (page === "progress")  return <ProgressPage user={user} />;
+    if (page === "reports")   return <ReportsPage user={user} />;
     if (page === "users" && isAdmin) return <UsersPage currentUser={user} />;
     return null;
   };
