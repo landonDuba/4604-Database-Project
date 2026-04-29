@@ -5,9 +5,18 @@ import bcrypt
 
 app = Flask(__name__)
 app.secret_key = "change-this-to-a-random-secret"
-app.config.update(SESSION_COOKIE_SAMESITE="Lax")
+app.config.update(
+    SESSION_COOKIE_SAMESITE="None",
+    SESSION_COOKIE_SECURE=False,   # False for HTTP localhost
+    SESSION_COOKIE_HTTPONLY=True,
+)
 
-CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5500"])
+CORS(app, 
+     supports_credentials=True, 
+     origins=["http://127.0.0.1:5500"],
+     allow_headers=["Content-Type"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
 ADMIN_CODE = "fittrack-admin-2024"
 
@@ -409,8 +418,8 @@ def create_workout():
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute(
-            "INSERT INTO WORKOUT (user_id, workout_datetime, duration_min, total_calories_burned) VALUES (%s,%s,%s,%s)",
-            (user_id, d["workout_datetime"], d["duration_min"], round(total_cal, 1))
+            "INSERT INTO WORKOUT (user_id, workout_datetime, workout_name, duration_min, total_calories_burned) VALUES (%s,%s,%s,%s,%s)",
+            (user_id, d["workout_datetime"], d.get("workout_name", ""), d["duration_min"], round(total_cal, 1))
         )
         workout_id = cur.lastrowid
         for item in exercises:
@@ -452,8 +461,8 @@ def update_workout(wid):
     cur = conn.cursor(dictionary=True)
     try:
         cur.execute(
-            "UPDATE WORKOUT SET workout_datetime=%s, duration_min=%s, total_calories_burned=%s WHERE workout_id=%s",
-            (d["workout_datetime"], d["duration_min"], round(total_cal, 1), wid)
+            "UPDATE WORKOUT SET workout_datetime=%s, workout_name=%s, duration_min=%s, total_calories_burned=%s WHERE workout_id=%s",
+            (d["workout_datetime"], d.get("workout_name", ""), d["duration_min"], round(total_cal, 1), wid)
         )
         cur.execute("DELETE FROM WORKOUT_EXERCISE WHERE workout_id=%s", (wid,))
         for item in exercises:
@@ -502,9 +511,13 @@ def get_progress():
 def create_progress():
     d = request.json
     user_id = session["user_id"] if session.get("user_type") != "admin" else d.get("user_id", session["user_id"])
+    raw_date = (d.get("progress_date") or "")[:10]
+    if not raw_date:
+        return jsonify({"error": "progress_date is required"}), 400
     last_id = query(
         "INSERT INTO PROGRESS (user_id, progress_date, body_weight, body_fat_percent, notes) VALUES (%s,%s,%s,%s,%s)",
-        (user_id, d["progress_date"], d.get("body_weight"), d.get("body_fat_percent"), d.get("notes")), commit=True
+        (user_id, raw_date, d.get("body_weight") or None, d.get("body_fat_percent") or None, d.get("notes")),
+        commit=True
     )
     return jsonify({"progress_id": last_id}), 201
 
@@ -516,8 +529,15 @@ def update_progress(pid):
         p = query("SELECT user_id FROM PROGRESS WHERE progress_id=%s", (pid,), fetchone=True)
         if not p or p["user_id"] != session["user_id"]:
             return jsonify({"error": "Forbidden"}), 403
-    query("UPDATE PROGRESS SET progress_date=%s, body_weight=%s, body_fat_percent=%s, notes=%s WHERE progress_id=%s",
-          (d["progress_date"], d.get("body_weight"), d.get("body_fat_percent"), d.get("notes"), pid), commit=True)
+    # Normalize date — strip any time component if accidentally included
+    raw_date = (d.get("progress_date") or "")[:10]
+    if not raw_date:
+        return jsonify({"error": "progress_date is required"}), 400
+    query(
+        "UPDATE PROGRESS SET progress_date=%s, body_weight=%s, body_fat_percent=%s, notes=%s WHERE progress_id=%s",
+        (raw_date, d.get("body_weight") or None, d.get("body_fat_percent") or None, d.get("notes"), pid),
+        commit=True
+    )
     return jsonify({"success": True})
 
 @app.route("/api/progress/<int:pid>", methods=["DELETE"])
@@ -529,6 +549,62 @@ def delete_progress(pid):
             return jsonify({"error": "Forbidden"}), 403
     query("DELETE FROM PROGRESS WHERE progress_id=%s", (pid,), commit=True)
     return jsonify({"success": True})
+
+
+# ── REPORTS ───────────────────────────────────────────────────────────────────
+@app.route("/api/reports/meal-progress", methods=["GET"])
+@login_required
+def report_meal_progress():
+    user_id = session["user_id"]
+    is_admin = session.get("user_type") == "admin"
+    base = """
+        SELECT
+            u.user_id,
+            u.email,
+            p.body_weight,
+            p.progress_date,
+            m.meal_name,
+            ROUND(AVG(m.total_calories), 1) AS avg_calories_for_meal_type,
+            COUNT(m.meal_id)                AS times_eaten
+        FROM USER u
+        JOIN PROGRESS p ON p.user_id = u.user_id
+        JOIN MEAL     m ON m.user_id = u.user_id
+        {where}
+        GROUP BY u.user_id, u.email, p.body_weight, p.progress_date, m.meal_name
+        ORDER BY p.progress_date DESC, m.meal_name
+    """
+    if is_admin:
+        rows = query(base.format(where=""))
+    else:
+        rows = query(base.format(where="WHERE u.user_id = %s"), (user_id,))
+    return jsonify(rows)
+
+
+@app.route("/api/reports/activity-summary", methods=["GET"])
+@login_required
+def report_activity_summary():
+    user_id = session["user_id"]
+    is_admin = session.get("user_type") == "admin"
+    base = """
+        SELECT
+            u.user_id,
+            u.email,
+            COUNT(DISTINCT m.meal_id)             AS total_meals,
+            COALESCE(SUM(m.total_calories), 0)    AS total_calories_consumed,
+            COUNT(DISTINCT w.workout_id)           AS total_workouts,
+            COALESCE(SUM(w.duration_min), 0)       AS total_workout_minutes
+        FROM USER u
+        LEFT JOIN MEAL    m ON m.user_id = u.user_id
+        LEFT JOIN WORKOUT w ON w.user_id = u.user_id
+        {where}
+        GROUP BY u.user_id, u.email
+        ORDER BY total_calories_consumed DESC
+    """
+    if is_admin:
+        rows = query(base.format(where=""))
+    else:
+        rows = query(base.format(where="WHERE u.user_id = %s"), (user_id,))
+    return jsonify(rows)
 
 
 if __name__ == "__main__":

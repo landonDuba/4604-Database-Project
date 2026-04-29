@@ -157,6 +157,11 @@
   .sets-reps-grid input{padding:4px 6px !important;font-size:10px;text-align:center;}
   .slot-count{font-size:10px;color:var(--muted);margin-top:4px;}
   .slot-count span{color:var(--accent);}
+  /* REPORTS */
+  .report-section{margin-bottom:32px;}
+  .report-section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+  .report-section-sub{font-size:11px;color:var(--muted);margin-bottom:14px;}
+  .report-no-data{padding:32px;text-align:center;color:var(--muted);font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:12px;}
 </style>
 </head>
 <body>
@@ -196,18 +201,14 @@ function pwStrength(pw) {
   return map[score - 1] || { pct: 10, color: "#ff4d4d", label: "weak" };
 }
 
-// Normalize any date/datetime string into the "YYYY-MM-DDTHH:MM" format
-// that datetime-local inputs require. Handles ISO strings, RFC strings, etc.
 function toDatetimeLocal(v) {
   if (!v) return "";
   const d = new Date(v);
   if (isNaN(d)) return "";
-  // Use local time components to avoid timezone shifting the date
   const pad = n => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// Same but date-only: "YYYY-MM-DD"
 function toDateLocal(v) {
   if (!v) return "";
   const d = new Date(v);
@@ -349,7 +350,6 @@ function CrudTable({ title, subtitle, columns, rows, onAdd, onEdit, onDelete, lo
               <input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           )}
-          {/* Only show Add button if an onAdd handler was provided */}
           {typeof onAdd === 'function' && <button className="btn-add" onClick={onAdd}>+ Add {title.slice(0,-1) || "Record"}</button>}
         </div>
         <div className="table-wrap">
@@ -397,7 +397,7 @@ function CrudTable({ title, subtitle, columns, rows, onAdd, onEdit, onDelete, lo
   );
 }
 
-// ── FOOD PICKER (for Meals modal) ─────────────────────────────────────────────
+// ── FOOD PICKER ───────────────────────────────────────────────────────────────
 function FoodPicker({ selected, onChange, allFoods }) {
   const [search, setSearch] = useState("");
   const MAX = 5;
@@ -427,8 +427,6 @@ function FoodPicker({ selected, onChange, allFoods }) {
   return (
     <div className="picker-section">
       <div className="picker-label">Select foods (up to {MAX})</div>
-
-      {/* Selected foods */}
       {selected.length > 0 && (
         <div className="selected-list" style={{ marginBottom: 10 }}>
           {selected.map(item => (
@@ -451,14 +449,12 @@ function FoodPicker({ selected, onChange, allFoods }) {
           ))}
         </div>
       )}
-
       {selected.length > 0 && (
         <div className="calorie-summary">
           <span>Estimated total</span>
           <strong>{Math.round(totalCal)} kcal</strong>
         </div>
       )}
-
       {selected.length < MAX && (
         <>
           <div style={{ marginTop: 10 }}>
@@ -494,7 +490,7 @@ function FoodPicker({ selected, onChange, allFoods }) {
   );
 }
 
-// ── EXERCISE PICKER (for Workouts modal) ──────────────────────────────────────
+// ── EXERCISE PICKER ───────────────────────────────────────────────────────────
 function ExercisePicker({ selected, onChange, allExercises }) {
   const [search, setSearch] = useState("");
   const MAX = 5;
@@ -519,7 +515,6 @@ function ExercisePicker({ selected, onChange, allExercises }) {
   return (
     <div className="picker-section">
       <div className="picker-label">Select exercises (up to {MAX})</div>
-
       {selected.length > 0 && (
         <div className="selected-list" style={{ marginBottom: 10 }}>
           {selected.map(item => (
@@ -557,7 +552,6 @@ function ExercisePicker({ selected, onChange, allExercises }) {
           ))}
         </div>
       )}
-
       {selected.length < MAX && (
         <>
           <div className="picker-search">
@@ -588,6 +582,141 @@ function ExercisePicker({ selected, onChange, allExercises }) {
         </>
       )}
     </div>
+  );
+}
+
+// ── REPORTS PAGE ──────────────────────────────────────────────────────────────
+function ReportsPage({ user }) {
+  const [activityData, setActivityData] = useState([]);
+  const [mealProgressData, setMealProgressData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [activity, mealProgress] = await Promise.all([
+          apiFetch("/reports/activity-summary"),
+          apiFetch("/reports/meal-progress"),
+        ]);
+        setActivityData(activity);
+        setMealProgressData(mealProgress);
+      } catch(e) {}
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const isAdmin = user.user_type === "admin";
+
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Reports</div>
+          <div className="page-subtitle">{isAdmin ? "Analytics across all users" : "Your personal fitness analytics"}</div>
+        </div>
+      </div>
+      <div className="page-content">
+        {loading ? (
+          <div className="empty-state"><span className="spinner-sm"></span> Loading reports...</div>
+        ) : (
+          <>
+            {/* ── ACTIVITY SUMMARY ── */}
+            <div className="report-section">
+              <div className="report-section-title">📊 Activity Summary</div>
+              <div className="report-section-sub">
+                Total meals logged, calories consumed, workouts completed, and time spent training
+                {isAdmin ? " — all users" : ""}.
+              </div>
+              {activityData.length === 0 ? (
+                <div className="report-no-data">No activity data yet. Start logging meals and workouts!</div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        {isAdmin && <th>User</th>}
+                        <th>Total Meals</th>
+                        <th>Calories Consumed</th>
+                        <th>Total Workouts</th>
+                        <th>Workout Minutes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activityData.map((row, i) => (
+                        <tr key={i}>
+                          {isAdmin && <td style={{ color: "var(--accent)", fontSize: 11 }}>{row.email}</td>}
+                          <td>{row.total_meals}</td>
+                          <td>
+                            <span style={{ color: "var(--warn)", fontWeight: 500 }}>
+                              {Number(row.total_calories_consumed).toLocaleString()} kcal
+                            </span>
+                          </td>
+                          <td>{row.total_workouts}</td>
+                          <td>{row.total_workout_minutes} min</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* ── MEAL vs PROGRESS ── */}
+            <div className="report-section">
+              <div className="report-section-title">⚖️ Meal Patterns &amp; Body Weight</div>
+              <div className="report-section-sub">
+                How often each meal type was logged and average calories per entry, cross-referenced with body weight check-ins
+                {isAdmin ? " — all users" : ""}.
+              </div>
+              {mealProgressData.length === 0 ? (
+                <div className="report-no-data">
+                  No data yet. This report requires at least one progress check-in and one logged meal.
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        {isAdmin && <th>User</th>}
+                        <th>Check-in Date</th>
+                        <th>Body Weight</th>
+                        <th>Meal Name</th>
+                        <th>Avg Calories</th>
+                        <th>Times Logged</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mealProgressData.map((row, i) => (
+                        <tr key={i}>
+                          {isAdmin && <td style={{ color: "var(--accent)", fontSize: 11 }}>{row.email}</td>}
+                          <td>{row.progress_date ? new Date(row.progress_date).toLocaleDateString() : "—"}</td>
+                          <td>
+                            {row.body_weight != null
+                              ? <span style={{ color: "var(--accent2)", fontWeight: 500 }}>{row.body_weight} lbs</span>
+                              : "—"}
+                          </td>
+                          <td>{row.meal_name}</td>
+                          <td>
+                            <span style={{ color: "var(--warn)" }}>
+                              {row.avg_calories_for_meal_type != null ? `${row.avg_calories_for_meal_type} kcal` : "—"}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{ color: "var(--text)" }}>{row.times_eaten}×</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -707,7 +836,6 @@ function FoodsPage({ user }) {
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
   const isAdmin = user.user_type === "admin";
-  // Search state for read-only foods view
   const [search, setSearch] = useState("");
 
   const load = async () => {
@@ -740,19 +868,14 @@ function FoodsPage({ user }) {
     { key:"fat_g", label:"Fat", render: v => v != null ? `${v}g` : "—" },
   ];
 
-  // Regular users: read-only view, no add/edit/delete
   if (!isAdmin) {
     const filtered = search
-      ? rows.filter(r => ["food_name"].some(k => String(r[k] ?? "").toLowerCase().includes(search.toLowerCase())))
+      ? rows.filter(r => String(r.food_name ?? "").toLowerCase().includes(search.toLowerCase()))
       : rows;
-
     return (
       <>
         <div className="page-header">
-          <div>
-            <div className="page-title">Foods</div>
-            <div className="page-subtitle">Food library — managed by admins</div>
-          </div>
+          <div><div className="page-title">Foods</div><div className="page-subtitle">Food library — managed by admins</div></div>
         </div>
         <div className="page-content">
           <div className="table-toolbar">
@@ -762,29 +885,10 @@ function FoodsPage({ user }) {
             </div>
           </div>
           <div className="table-wrap">
-            {loading ? (
-              <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
-            ) : filtered.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon">🥦</span>
-                {search ? "No results found." : "No foods in the library yet."}
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {filtered.map((row, i) => (
-                    <tr key={i}>
-                      {columns.map(c => (
-                        <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            {loading ? <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
+              : filtered.length === 0 ? <div className="empty-state"><span className="empty-icon">🥦</span>{search ? "No results found." : "No foods in the library yet."}</div>
+              : <table><thead><tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
+                <tbody>{filtered.map((row, i) => <tr key={i}>{columns.map(c => <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>)}</tr>)}</tbody></table>}
           </div>
         </div>
       </>
@@ -895,10 +999,11 @@ function WorkoutsPage({ user }) {
   const del = async row => { await apiFetch(`/workouts/${row.workout_id}`, "DELETE"); await load(); };
 
   const columns = [
-    { key:"workout_name", label:"Workout", render: v => v || "—" },
+    // ── FIX: workout_name now displayed as first column ──
+    { key:"workout_name", label:"Name", render: v => v || <span style={{color:"var(--muted)"}}>—</span> },
     { key:"workout_datetime", label:"Date/Time", render: v => v ? new Date(v).toLocaleString() : "—" },
     { key:"duration_min", label:"Duration", render: v => v != null ? `${v} min` : "—" },
-    { key:"total_calories_burned", label:"Calories Burned", render: v => v != null ? `${v} kcal` : "—" },
+    { key:"total_calories_burned", label:"Cal Burned", render: v => v != null ? `${v} kcal` : "—" },
     { key:"exercises", label:"Exercises", render: v => v ? `${v.length} exercise${v.length !== 1 ? "s" : ""}` : "—" },
     ...(isAdmin ? [{ key:"email", label:"User" }] : []),
   ];
@@ -948,7 +1053,6 @@ function ExercisesPage({ user }) {
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
   const isAdmin = user.user_type === "admin";
-  // Search for read-only view
   const [search, setSearch] = useState("");
 
   const load = async () => {
@@ -981,19 +1085,14 @@ function ExercisesPage({ user }) {
     { key:"calories_per_unit", label:"Cal/Unit", render: v => v != null ? `${v}` : "—" },
   ];
 
-  // Regular users: read-only view, no add/edit/delete
   if (!isAdmin) {
     const filtered = search
-      ? rows.filter(r => ["exercise_name", "muscle_group"].some(k => String(r[k] ?? "").toLowerCase().includes(search.toLowerCase())))
+      ? rows.filter(r => ["exercise_name","muscle_group"].some(k => String(r[k]??'').toLowerCase().includes(search.toLowerCase())))
       : rows;
-
     return (
       <>
         <div className="page-header">
-          <div>
-            <div className="page-title">Exercises</div>
-            <div className="page-subtitle">Exercise library with muscle groups</div>
-          </div>
+          <div><div className="page-title">Exercises</div><div className="page-subtitle">Exercise library with muscle groups</div></div>
         </div>
         <div className="page-content">
           <div className="table-toolbar">
@@ -1003,29 +1102,10 @@ function ExercisesPage({ user }) {
             </div>
           </div>
           <div className="table-wrap">
-            {loading ? (
-              <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
-            ) : filtered.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon">🏃</span>
-                {search ? "No results found." : "No exercises in the library yet."}
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {filtered.map((row, i) => (
-                    <tr key={i}>
-                      {columns.map(c => (
-                        <td key={c.key}>{c.render ? c.render(row[c.key], row) : (row[c.key] ?? "—")}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            {loading ? <div className="empty-state"><span className="spinner-sm"></span> Loading...</div>
+              : filtered.length === 0 ? <div className="empty-state"><span className="empty-icon">🏃</span>{search ? "No results found." : "No exercises in the library yet."}</div>
+              : <table><thead><tr>{columns.map(c=><th key={c.key}>{c.label}</th>)}</tr></thead>
+                <tbody>{filtered.map((row,i)=><tr key={i}>{columns.map(c=><td key={c.key}>{c.render?c.render(row[c.key],row):(row[c.key]??"—")}</td>)}</tr>)}</tbody></table>}
           </div>
         </div>
       </>
@@ -1281,16 +1361,15 @@ function Dashboard({ user, onLogout }) {
 
   const logout = async () => { await apiFetch("/auth/logout", "POST"); onLogout(); };
 
-  // Regular users: show Exercises in nav (read-only for regular users; only admin can add/edit/delete)
   const regularNav = [
     { id:"meals", icon:"🍽️", label:"Meals" },
     { id:"foods", icon:"🥦", label:"Foods" },
     { id:"exercises", icon:"🏃", label:"Exercises" },
     { id:"workouts", icon:"💪", label:"Workouts" },
     { id:"progress", icon:"📈", label:"Progress" },
+    { id:"reports", icon:"📊", label:"Reports" },
   ];
 
-  // Admins: Users + all sections including Exercises
   const adminNav = [
     { id:"users", icon:"👥", label:"Users" },
     { id:"meals", icon:"🍽️", label:"Meals" },
@@ -1298,6 +1377,7 @@ function Dashboard({ user, onLogout }) {
     { id:"workouts", icon:"💪", label:"Workouts" },
     { id:"exercises", icon:"🏃", label:"Exercises" },
     { id:"progress", icon:"📈", label:"Progress" },
+    { id:"reports", icon:"📊", label:"Reports" },
   ];
 
   const nav = isAdmin ? adminNav : regularNav;
@@ -1307,9 +1387,9 @@ function Dashboard({ user, onLogout }) {
     if (page === "meals") return <MealsPage user={user} />;
     if (page === "foods") return <FoodsPage user={user} />;
     if (page === "workouts") return <WorkoutsPage user={user} />;
-    // Show exercises page to all users (read-only for regular users)
     if (page === "exercises") return <ExercisesPage user={user} />;
     if (page === "progress") return <ProgressPage user={user} />;
+    if (page === "reports") return <ReportsPage user={user} />;
     if (page === "users" && isAdmin) return <UsersPage currentUser={user} />;
     return null;
   };
